@@ -1,0 +1,149 @@
+// Genesis Provenance - Prisma Schema for Phase 1
+
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/genesis_provenance/nextjs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// User roles enum
+enum UserRole {
+  collector
+  reseller
+  partner
+  admin
+}
+
+// Organization types enum
+enum OrganizationType {
+  individual
+  reseller
+  partner
+  enterprise
+}
+
+// Item status enum
+enum ItemStatus {
+  pending
+  verified
+  flagged
+  rejected
+}
+
+// Contact submission user types
+enum ContactUserType {
+  collector
+  reseller
+  partner
+  other
+}
+
+// Contact submission status
+enum ContactStatus {
+  new
+  contacted
+  converted
+  archived
+}
+
+// Organizations table
+model Organization {
+  id        String           @id @default(uuid())
+  name      String
+  type      OrganizationType @default(individual)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  users User[]
+  items Item[]
+
+  @@map("organizations")
+}
+
+// Users table
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  passwordHash   String       @map("password_hash")
+  fullName       String       @map("full_name")
+  role           UserRole     @default(collector)
+  organizationId String?      @map("organization_id")
+  emailVerified  Boolean      @default(false) @map("email_verified")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  itemsCreated Item[]
+
+  @@index([email])
+  @@index([organizationId])
+  @@map("users")
+}
+
+// Item categories table
+model ItemCategory {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  items Item[]
+
+  @@map("item_categories")
+}
+
+// Items table
+model Item {
+  id              String      @id @default(uuid())
+  organizationId  String      @map("organization_id")
+  createdByUserId String      @map("created_by_user_id")
+  categoryId      String      @map("category_id")
+  brand           String?
+  model           String?
+  referenceNumber String?     @map("reference_number")
+  serialNumber    String?     @map("serial_number")
+  purchaseDate    DateTime?   @map("purchase_date")
+  status          ItemStatus  @default(pending)
+  riskScore       Int?        @map("risk_score")
+  notes           String?     @db.Text
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  category     ItemCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([organizationId])
+  @@index([createdByUserId])
+  @@index([categoryId])
+  @@index([status])
+  @@map("items")
+}
+
+// Contact submissions table (for waitlist/contact forms)
+model ContactSubmission {
+  id        String            @id @default(uuid())
+  name      String
+  email     String
+  company   String?
+  userType  ContactUserType   @map("user_type")
+  message   String            @db.Text
+  status    ContactStatus     @default(new)
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_submissions")
+}
