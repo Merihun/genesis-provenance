@@ -83,8 +83,8 @@ export default function HomePage() {
             <div className="relative h-[400px] lg:h-[500px]">
               <div className="relative w-full h-full rounded-lg overflow-hidden shadow-2xl">
                 <Image
-                  src="https://thumbs.dreamstime.com/b/luxury-fashion-accessories-beauty-products-flat-lay-stunning-flat-lay-luxury-fashion-accessories-beauty-products-418017133.jpg"
-                  alt="Luxury assets including watches, handbags, and jewelry"
+                  src="/hero-luxury-vault.jpg"
+                  alt="Luxury watch vault showcasing high-end timepieces and provenance management"
                   fill
                   className="object-cover"
                   priority

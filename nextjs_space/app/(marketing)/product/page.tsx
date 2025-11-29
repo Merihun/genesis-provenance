@@ -15,7 +15,7 @@ export default function ProductPage() {
       icon: Package,
       title: 'Collectors',
       description: 'Individual collectors protecting their investments',
-      image: 'https://hodinkee-production.s3.amazonaws.com/uploads/images/1481127614409-5g6kd54fi322w9eo-0b995a5ce6b3fbcd6f92c3f1ea0d7e03/PA250503.jpg',
+      image: '/collector-luxury-watch.jpg',
       features: [
         'Register and document your luxury items with photos and certificates',
         'Upload purchase receipts, appraisals, and service records',
@@ -28,7 +28,7 @@ export default function ProductPage() {
       icon: Store,
       title: 'Resellers & Dealers',
       description: 'Boutiques and dealers managing inventory',
-      image: 'https://imageio.forbes.com/specials-images/imageserve/6779d313a6adbaf2d9edc9d9/Christie-s-Luxury-Auction-Press-Preview/1960x0.jpg?format=jpg&width=960',
+      image: '/reseller-boutique.jpg',
       features: [
         'Streamline intake with AI-powered authenticity checks',
         'Maintain comprehensive provenance for inventory',
@@ -41,7 +41,7 @@ export default function ProductPage() {
       icon: Briefcase,
       title: 'Partners',
       description: 'Auction houses, insurers, and lenders',
-      image: 'https://www.shnco.co/cdn/shop/articles/semi_fine_and_fine_jewelry.jpg?v=1655986855&width=3601',
+      image: '/partners-business.jpg',
       features: [
         'Access verified provenance data for underwriting decisions',
         'Use risk scores for loan valuations and insurance policies',
