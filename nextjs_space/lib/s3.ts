@@ -9,12 +9,14 @@ const { bucketName, folderPrefix } = getBucketConfig();
  * Upload a file to S3
  * @param buffer - File buffer to upload
  * @param key - S3 key (path) for the file
+ * @param isPublic - Whether the file should be publicly accessible (default: false)
  * @param contentType - MIME type of the file
  * @returns The full S3 key (cloud_storage_path)
  */
 export async function uploadFile(
   buffer: Buffer,
   key: string,
+  isPublic: boolean = false,
   contentType?: string
 ): Promise<string> {
   if (!bucketName) {

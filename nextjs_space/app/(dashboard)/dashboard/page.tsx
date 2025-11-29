@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
+import { prisma } from '@/lib/db';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -9,31 +10,57 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
 
+  // Fetch real statistics from the database
+  const totalItems = await prisma.item.count({
+    where: { organizationId: user?.organizationId },
+  });
+
+  const pendingItems = await prisma.item.count({
+    where: { 
+      organizationId: user?.organizationId,
+      status: 'pending'
+    },
+  });
+
+  const verifiedItems = await prisma.item.count({
+    where: { 
+      organizationId: user?.organizationId,
+      status: 'verified'
+    },
+  });
+
+  const flaggedItems = await prisma.item.count({
+    where: { 
+      organizationId: user?.organizationId,
+      status: 'flagged'
+    },
+  });
+
   const stats = [
     {
       title: 'Total Items',
-      value: '0',
+      value: totalItems.toString(),
       icon: Package,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
     {
       title: 'Pending Review',
-      value: '0',
+      value: pendingItems.toString(),
       icon: Clock,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100',
     },
     {
       title: 'Verified',
-      value: '0',
+      value: verifiedItems.toString(),
       icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-100',
     },
     {
       title: 'Flagged',
-      value: '0',
+      value: flaggedItems.toString(),
       icon: AlertTriangle,
       color: 'text-red-600',
       bgColor: 'bg-red-100',

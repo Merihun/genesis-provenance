@@ -66,6 +66,11 @@ enum ProvenanceEventType {
   ownership_transfer
   certificate_issued
   note_added
+  restoration_work
+  service_record
+  concours_event
+  appraisal
+  inspection
 }
 
 // Subscription status
@@ -144,14 +149,29 @@ model Item {
   organizationId  String      @map("organization_id")
   createdByUserId String      @map("created_by_user_id")
   categoryId      String      @map("category_id")
+  
+  // Basic details
   brand           String?
   model           String?
+  year            Int?
   referenceNumber String?     @map("reference_number")
   serialNumber    String?     @map("serial_number")
+  
+  // Luxury car specific
+  vin             String?                              // Vehicle Identification Number
+  makeModel       String?     @map("make_model")       // e.g., "Ferrari 275 GTB/4"
+  matchingNumbers Boolean?    @map("matching_numbers") // Engine/chassis match
+  
+  // Financial details
   purchaseDate    DateTime?   @map("purchase_date")
+  purchasePrice   Decimal?    @map("purchase_price") @db.Decimal(12, 2)
+  estimatedValue  Decimal?    @map("estimated_value") @db.Decimal(12, 2)
+  
+  // Status & authentication
   status          ItemStatus  @default(pending)
   riskScore       Int?        @map("risk_score")
   notes           String?     @db.Text
+  
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
@@ -167,6 +187,7 @@ model Item {
   @@index([createdByUserId])
   @@index([categoryId])
   @@index([status])
+  @@index([vin])
   @@map("items")
 }
 
@@ -197,6 +218,7 @@ model MediaAsset {
   cloudStoragePath  String         @map("cloud_storage_path")  // S3 key
   fileSize          Int            @map("file_size")            // in bytes
   mimeType          String         @map("mime_type")
+  isPublic          Boolean        @default(false) @map("is_public")  // Public vs private S3 access
   uploadedAt        DateTime       @default(now()) @map("uploaded_at")
 
   // Relations
