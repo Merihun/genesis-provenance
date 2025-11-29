@@ -74,7 +74,7 @@ export default async function AdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users?.map((u) => (
+              {users?.map((u: typeof users[number]) => (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.fullName}</TableCell>
                   <TableCell>{u.email}</TableCell>
@@ -113,7 +113,7 @@ export default async function AdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {organizations?.map((org) => (
+              {organizations?.map((org: typeof organizations[number]) => (
                 <TableRow key={org.id}>
                   <TableCell className="font-medium">{org.name}</TableCell>
                   <TableCell>
@@ -152,7 +152,7 @@ export default async function AdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contactSubmissions?.map((submission) => (
+              {contactSubmissions?.map((submission: typeof contactSubmissions[number]) => (
                 <TableRow key={submission.id}>
                   <TableCell className="font-medium">{submission.name}</TableCell>
                   <TableCell>{submission.email}</TableCell>
