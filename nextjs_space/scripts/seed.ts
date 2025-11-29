@@ -14,6 +14,7 @@ async function main() {
     { name: 'Jewelry', slug: 'jewelry' },
     { name: 'Art', slug: 'art' },
     { name: 'Collectible', slug: 'collectible' },
+    { name: 'Luxury Car', slug: 'luxury-car' },
     { name: 'Other', slug: 'other' },
   ];
 
