@@ -27,7 +27,8 @@ import {
   DollarSign,
   Shield,
   AlertCircle,
-  Upload
+  Upload,
+  FileDown
 } from 'lucide-react';
 
 interface ItemDetails {
@@ -176,6 +177,57 @@ export default function ItemDetailPage() {
     }
   };
 
+  const handleDownloadCertificate = async () => {
+    try {
+      toast({
+        title: 'Generating Certificate',
+        description: 'Please wait while we generate your certificate...',
+      });
+
+      const res = await fetch(`/api/items/${params.id}/certificate`);
+      
+      if (!res.ok) {
+        throw new Error('Failed to generate certificate');
+      }
+
+      // Get the filename from the Content-Disposition header if available
+      const contentDisposition = res.headers.get('Content-Disposition');
+      let filename = 'Certificate.pdf';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Convert response to blob
+      const blob = await res.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: 'Success',
+        description: 'Certificate downloaded successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to download certificate. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; className: string }> = {
       pending: { label: 'Pending Review', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
@@ -252,6 +304,10 @@ export default function ItemDetailPage() {
             )}
           </div>
           <div className="flex gap-2">
+            <Button onClick={handleDownloadCertificate} className="bg-navy-600 hover:bg-navy-700">
+              <FileDown className="h-4 w-4 mr-2" />
+              Download Certificate
+            </Button>
             <Button variant="outline">
               <Edit className="h-4 w-4 mr-2" />
               Edit

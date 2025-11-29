@@ -90,6 +90,22 @@ enum SubscriptionPlan {
   enterprise
 }
 
+// Team member roles
+enum TeamRole {
+  owner
+  admin
+  editor
+  viewer
+}
+
+// Team invite status
+enum InviteStatus {
+  pending
+  accepted
+  declined
+  expired
+}
+
 // Organizations table
 model Organization {
   id        String           @id @default(uuid())
@@ -102,6 +118,8 @@ model Organization {
   users         User[]
   items         Item[]
   subscriptions Subscription[]
+  teamMembers   TeamMember[]
+  teamInvites   TeamInvite[]
 
   @@map("organizations")
 }
@@ -123,6 +141,7 @@ model User {
   itemsCreated     Item[]
   provenanceEvents ProvenanceEvent[]
   auditLogs        AuditLog[]
+  teamMemberships  TeamMember[]
 
   @@index([email])
   @@index([organizationId])
@@ -313,4 +332,45 @@ model AuditLog {
   @@index([resource])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// Team members table (for collaboration)
+model TeamMember {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  role           TeamRole @default(viewer)
+  addedAt        DateTime @default(now()) @map("added_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+// Team invites table (pending invitations)
+model TeamInvite {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  email          String
+  role           TeamRole     @default(viewer)
+  status         InviteStatus @default(pending)
+  inviteToken    String       @unique @map("invite_token")
+  expiresAt      DateTime     @map("expires_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([inviteToken])
+  @@index([status])
+  @@map("team_invites")
 }

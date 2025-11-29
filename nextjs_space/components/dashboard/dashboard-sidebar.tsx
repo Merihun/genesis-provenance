@@ -17,6 +17,7 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'My Vault', href: '/vault', icon: Package },
+    { name: 'Team', href: '/team', icon: Users },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
