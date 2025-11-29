@@ -14,7 +14,7 @@ export default function HowItWorksPage() {
       number: '01',
       icon: Upload,
       title: 'Register Your Asset',
-      description: 'Upload photos, documents, and metadata about your luxury item including brand, model, serial number, purchase details, and any existing certificates or appraisals.',
+      description: 'Upload photos, documents, and metadata about your luxury item—whether it\'s a vintage Rolex, rare Hermès Birkin, fine jewelry piece, classic Ferrari, or museum-quality artwork. Include brand, model, serial number, purchase details, and any existing certificates or appraisals.',
     },
     {
       number: '02',

@@ -62,7 +62,7 @@ export default function SecurityPage() {
         <div className="mx-auto max-w-5xl px-6 lg:px-8">
           <div className="relative h-[300px] rounded-2xl overflow-hidden shadow-2xl">
             <Image
-              src="/digital-security.jpg"
+              src="/digital_security_blockchain.jpg"
               alt="Digital security vault with blockchain technology for luxury asset authentication"
               fill
               className="object-cover"

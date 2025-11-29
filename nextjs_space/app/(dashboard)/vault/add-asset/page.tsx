@@ -99,15 +99,15 @@ export default function AddAssetPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label>Category</Label>
-                  <Input placeholder="Watch, Handbag, Jewelry, Art..." disabled />
+                  <Input placeholder="Watch, Luxury Car, Handbag, Jewelry, Art..." disabled />
                 </div>
                 <div>
                   <Label>Brand</Label>
-                  <Input placeholder="e.g., Rolex, Hermès" disabled />
+                  <Input placeholder="e.g., Rolex, Ferrari, Hermès" disabled />
                 </div>
                 <div>
                   <Label>Model</Label>
-                  <Input placeholder="e.g., Submariner, Birkin" disabled />
+                  <Input placeholder="e.g., Submariner, 275 GTB/4, Birkin" disabled />
                 </div>
                 <div>
                   <Label>Serial Number</Label>
