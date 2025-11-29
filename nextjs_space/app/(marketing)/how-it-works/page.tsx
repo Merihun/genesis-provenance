@@ -109,9 +109,9 @@ export default function HowItWorksPage() {
             Request access to Genesis Provenance and protect your luxury investments.
           </p>
           <div className="mt-8 flex justify-center gap-4">
-            <Link href="/contact">
+            <Link href="/auth/signup">
               <Button size="lg" className="bg-blue-900 hover:bg-blue-800 text-lg px-8">
-                Request Access
+                Get Started Free
               </Button>
             </Link>
             <Link href="/pricing">

@@ -50,14 +50,14 @@ export function MarketingNav() {
           ))}
         </div>
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-4">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm">
+          <Link href="/auth/login">
+            <Button variant="ghost" size="sm" className="hover:text-blue-900">
               Sign In
             </Button>
           </Link>
-          <Link href="/contact">
-            <Button size="sm" className="bg-blue-900 hover:bg-blue-800">
-              Request Access
+          <Link href="/auth/signup">
+            <Button size="sm" className="bg-blue-900 hover:bg-blue-800 shadow-lg hover:shadow-xl transition-all duration-200">
+              Get Started Free
             </Button>
           </Link>
         </div>
@@ -97,14 +97,14 @@ export function MarketingNav() {
                   ))}
                 </div>
                 <div className="py-6 space-y-2">
-                  <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
                     <Button variant="outline" className="w-full">
                       Sign In
                     </Button>
                   </Link>
-                  <Link href="/contact" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
                     <Button className="w-full bg-blue-900 hover:bg-blue-800">
-                      Request Access
+                      Get Started Free
                     </Button>
                   </Link>
                 </div>

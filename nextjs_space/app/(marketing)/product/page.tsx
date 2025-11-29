@@ -120,21 +120,29 @@ export default function ProductPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-blue-900 py-16">
+      <section className="bg-gradient-to-br from-blue-900 to-blue-800 py-20">
         <div className="mx-auto max-w-4xl px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-white font-serif" style={{ fontFamily: 'var(--font-playfair)' }}>
-            Get Started with Genesis Provenance
+          <h2 className="text-4xl font-bold text-white font-serif" style={{ fontFamily: 'var(--font-playfair)' }}>
+            Start Building Your Provenance Record
           </h2>
-          <p className="mt-6 text-lg text-blue-100">
-            Request access to see how Genesis Provenance can protect your luxury assets.
+          <p className="mt-6 text-xl text-blue-100">
+            See how Genesis Provenance can protect your luxury assets. Start your free trial today.
           </p>
-          <div className="mt-8">
-            <Link href="/contact">
-              <Button size="lg" variant="secondary" className="text-lg px-8">
-                Request Access
+          <div className="mt-10 flex items-center justify-center gap-x-6">
+            <Link href="/auth/signup">
+              <Button size="lg" variant="secondary" className="text-lg px-10 py-6 shadow-xl hover:shadow-2xl transition-all duration-200">
+                Get Started Free
+              </Button>
+            </Link>
+            <Link href="/pricing">
+              <Button size="lg" variant="outline" className="text-lg px-10 py-6 bg-transparent text-white border-2 border-white hover:bg-white hover:text-blue-900 transition-all duration-200">
+                View Pricing
               </Button>
             </Link>
           </div>
+          <p className="mt-6 text-sm text-blue-200">
+            14-day free trial • No credit card required
+          </p>
         </div>
       </section>
     </div>

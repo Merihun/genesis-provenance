@@ -179,7 +179,7 @@ export default function SecurityPage() {
           <div className="mt-8">
             <Link href="/contact">
               <Button size="lg" variant="secondary" className="text-lg px-8">
-                Request Access
+                Get Started Free
               </Button>
             </Link>
           </div>

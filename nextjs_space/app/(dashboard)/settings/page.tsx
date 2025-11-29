@@ -10,15 +10,24 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 export default function SettingsPage() {
-  const { data: session } = useSession() || {};
+  const { data: session, status } = useSession();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: session?.user?.name ?? '',
+    fullName: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
+
+  // Show loading state while session is being fetched
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-900" />
+      </div>
+    );
+  }
 
   const user = session?.user as any;
 

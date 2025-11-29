@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Package } from 'lucide-react';
@@ -15,10 +16,12 @@ export default function VaultPage() {
             Manage your luxury asset provenance records
           </p>
         </div>
-        <Button className="bg-blue-900 hover:bg-blue-800">
-          <Package className="mr-2 h-4 w-4" />
-          Add Asset
-        </Button>
+        <Link href="/vault/add-asset">
+          <Button className="bg-blue-900 hover:bg-blue-800">
+            <Package className="mr-2 h-4 w-4" />
+            Add Asset
+          </Button>
+        </Link>
       </div>
 
       {/* Empty State */}
@@ -35,13 +38,15 @@ export default function VaultPage() {
               Add your first luxury asset to get started. Upload photos, documents, and metadata to create a verified provenance record.
             </p>
             <div className="mt-8">
-              <Button className="bg-blue-900 hover:bg-blue-800" size="lg">
-                <Package className="mr-2 h-5 w-5" />
-                Add Your First Asset
-              </Button>
+              <Link href="/vault/add-asset">
+                <Button className="bg-blue-900 hover:bg-blue-800" size="lg">
+                  <Package className="mr-2 h-5 w-5" />
+                  Add Your First Asset
+                </Button>
+              </Link>
             </div>
             <div className="mt-6 text-sm text-gray-500">
-              <p>Asset onboarding wizard coming in Phase 2</p>
+              <p>Click above to start adding your first luxury asset</p>
             </div>
           </div>
         </CardContent>
