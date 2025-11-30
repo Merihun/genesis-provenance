@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { generateMockAnalysis } from '@/lib/ai-mock';
+import { generateGoogleVisionAnalysis } from '@/lib/ai-google-vision';
 import { AIAnalysisStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -137,6 +138,10 @@ export async function POST(
       );
     }
 
+    // Determine which AI provider to use
+    const useGoogleVision = process.env.GOOGLE_VISION_ENABLED === 'true';
+    const apiProvider = useGoogleVision ? 'google-vision' : 'mock';
+
     // Create new analysis record
     const analysis = await prisma.aIAnalysis.create({
       data: {
@@ -144,7 +149,7 @@ export async function POST(
         requestedByUserId: userId,
         status: AIAnalysisStatus.pending,
         analyzedImageIds: item.mediaAssets.map(m => m.id),
-        apiProvider: 'mock', // In production, this would be 'google-vision' or 'aws-rekognition'
+        apiProvider,
       },
       include: {
         requestedBy: {
@@ -190,8 +195,18 @@ async function processAnalysis(
       data: { status: AIAnalysisStatus.processing },
     });
 
-    // Generate mock analysis result
-    const result = await generateMockAnalysis(item, imageIds);
+    // Determine which AI provider to use
+    const useGoogleVision = process.env.GOOGLE_VISION_ENABLED === 'true';
+    
+    // Generate analysis result using appropriate provider
+    let result;
+    if (useGoogleVision) {
+      console.log(`Using Google Cloud Vision AI for item ${item.id}`);
+      result = await generateGoogleVisionAnalysis(item, imageIds);
+    } else {
+      console.log(`Using mock AI analysis for item ${item.id}`);
+      result = await generateMockAnalysis(item, imageIds);
+    }
 
     // Update analysis with results
     await prisma.aIAnalysis.update({
@@ -209,17 +224,19 @@ async function processAnalysis(
     });
 
     // Create a provenance event for the analysis
+    const apiProvider = useGoogleVision ? 'Google Cloud Vision AI' : 'Mock AI';
     await prisma.provenanceEvent.create({
       data: {
         itemId: item.id,
         userId: item.createdByUserId,
         eventType: 'inspection',
-        title: 'AI Authentication Analysis',
+        title: `AI Authentication Analysis (${apiProvider})`,
         description: `AI analysis completed with ${result.confidenceScore}% confidence. Fraud risk: ${result.fraudRiskLevel}.`,
         metadata: {
           analysisId,
           confidenceScore: result.confidenceScore,
           fraudRiskLevel: result.fraudRiskLevel,
+          apiProvider,
         },
         occurredAt: new Date(),
       },

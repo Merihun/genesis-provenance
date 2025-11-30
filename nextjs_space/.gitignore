@@ -53,3 +53,8 @@ Thumbs.db
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+
+# Google Cloud Platform
+genesis-vision-key.json
+*-key.json
+*.json.key
