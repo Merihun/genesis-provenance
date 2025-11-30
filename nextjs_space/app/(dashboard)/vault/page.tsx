@@ -1,20 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Search, Filter, Package, FileImage, Clock } from 'lucide-react';
+import { Loader2, Plus, Search, Filter, Package, FileImage, Clock, ImageIcon } from 'lucide-react';
 import type { AssetCategory, AssetWithDetails } from '@/lib/types';
 
 export default function VaultPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession() || {};
   const [items, setItems] = useState<AssetWithDetails[]>([]);
   const [categories, setCategories] = useState<AssetCategory[]>([]);
@@ -26,6 +28,20 @@ export default function VaultPage() {
     sortBy: 'date',
     sortOrder: 'desc'
   });
+
+  // Read URL params and set initial filters
+  useEffect(() => {
+    const category = searchParams?.get('category');
+    const status = searchParams?.get('status');
+    
+    if (category || status) {
+      setFilters(prev => ({
+        ...prev,
+        ...(category && { categoryId: category }),
+        ...(status && { status: status })
+      }));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchCategories();
@@ -224,7 +240,24 @@ export default function VaultPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {items.map((item) => (
-            <Card key={item.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push(`/vault/${item.id}`)}>
+            <Card key={item.id} className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden" onClick={() => router.push(`/vault/${item.id}`)}>
+              {/* Thumbnail Image */}
+              <div className="relative w-full aspect-video bg-gray-100">
+                {item.mediaAssets && item.mediaAssets.length > 0 ? (
+                  <Image
+                    src={item.mediaAssets[0].cloudStoragePath}
+                    alt={`${item.brand || ''} ${item.model || 'Asset'}`}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-navy-100 to-gray-100">
+                    <ImageIcon className="h-16 w-16 text-gray-400" />
+                  </div>
+                )}
+              </div>
+              
               <CardHeader>
                 <div className="flex justify-between items-start mb-2">
                   <Badge variant="outline">{item.category.name}</Badge>

@@ -82,6 +82,15 @@ export async function GET(request: NextRequest) {
       orderBy,
       include: {
         category: true,
+        mediaAssets: {
+          take: 1,
+          where: {
+            type: 'photo',
+          },
+          orderBy: {
+            uploadedAt: 'asc',
+          },
+        },
         _count: {
           select: {
             mediaAssets: true,

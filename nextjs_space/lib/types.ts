@@ -65,6 +65,12 @@ export type AssetWithDetails = {
   notes?: string
   createdAt: Date
   updatedAt: Date
+  mediaAssets?: Array<{
+    id: string
+    cloudStoragePath: string
+    mediaType: string
+    uploadedAt: Date
+  }>
   _count?: {
     mediaAssets: number
     provenanceEvents: number

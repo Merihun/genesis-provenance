@@ -2,9 +2,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { useRouter } from 'next/navigation';
 
 interface AnalyticsChartsProps {
-  categoryData: Array<{ name: string; value: number; totalValue: number }>;
+  categoryData: Array<{ categoryId: string; name: string; value: number; totalValue: number }>;
   valueOverTime: Array<{ date: string; value: number }>;
   totalValue: number;
 }
@@ -12,6 +13,13 @@ interface AnalyticsChartsProps {
 const COLORS = ['#1e3a8a', '#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe', '#fbbf24', '#f59e0b'];
 
 export default function AnalyticsCharts({ categoryData, valueOverTime, totalValue }: AnalyticsChartsProps) {
+  const router = useRouter();
+
+  const handlePieClick = (data: any) => {
+    if (data && data.categoryId) {
+      router.push(`/vault?category=${data.categoryId}`);
+    }
+  };
   return (
     <>
       {/* Portfolio Value Card */}
@@ -34,7 +42,7 @@ export default function AnalyticsCharts({ categoryData, valueOverTime, totalValu
       <Card className="md:col-span-2">
         <CardHeader>
           <CardTitle>Asset Distribution by Category</CardTitle>
-          <CardDescription>Number of items per category</CardDescription>
+          <CardDescription>Click on any segment to view items in that category</CardDescription>
         </CardHeader>
         <CardContent>
           {categoryData.length > 0 ? (
@@ -49,9 +57,15 @@ export default function AnalyticsCharts({ categoryData, valueOverTime, totalValu
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
+                  onClick={handlePieClick}
+                  cursor="pointer"
                 >
                   {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={COLORS[index % COLORS.length]}
+                      className="hover:opacity-80 transition-opacity"
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
