@@ -79,7 +79,7 @@ export default async function TeamPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {teamMembers.map((member) => (
+            {teamMembers.map((member: any) => (
               <div
                 key={member.id}
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -89,7 +89,7 @@ export default async function TeamPage() {
                     <AvatarFallback className="bg-navy-600 text-white">
                       {member.user.fullName
                         .split(' ')
-                        .map((n) => n[0])
+                        .map((n: string) => n[0])
                         .join('')
                         .toUpperCase()}
                     </AvatarFallback>

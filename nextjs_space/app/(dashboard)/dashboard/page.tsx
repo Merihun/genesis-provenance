@@ -51,16 +51,16 @@ export default async function DashboardPage() {
 
   // Get category names
   const categories = await prisma.itemCategory.findMany();
-  const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
+  const categoryMap = new Map(categories.map((c: { id: string; name: string }) => [c.id, c.name]));
 
-  const categoryData = itemsByCategory.map((item) => ({
+  const categoryData = itemsByCategory.map((item: any) => ({
     name: categoryMap.get(item.categoryId) || 'Unknown',
     value: item._count,
     totalValue: Number(item._sum.estimatedValue || 0),
   }));
 
   // Calculate total portfolio value
-  const totalValue = categoryData.reduce((sum, cat) => sum + cat.totalValue, 0);
+  const totalValue = categoryData.reduce((sum: number, cat: any) => sum + cat.totalValue, 0);
 
   // Fetch items ordered by creation date for value over time chart
   const items = await prisma.item.findMany({
@@ -81,7 +81,7 @@ export default async function DashboardPage() {
   const valueOverTime: Array<{ date: string; value: number }> = [];
   let cumulativeValue = 0;
   
-  items.forEach((item) => {
+  items.forEach((item: any) => {
     cumulativeValue += Number(item.estimatedValue || 0);
     valueOverTime.push({
       date: new Date(item.createdAt).toLocaleDateString('en-US', {
@@ -117,6 +117,7 @@ export default async function DashboardPage() {
       icon: Package,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
+      href: '/vault',
     },
     {
       title: 'Pending Review',
@@ -124,6 +125,7 @@ export default async function DashboardPage() {
       icon: Clock,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100',
+      href: '/vault?status=pending',
     },
     {
       title: 'Verified',
@@ -131,6 +133,7 @@ export default async function DashboardPage() {
       icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-100',
+      href: '/vault?status=verified',
     },
     {
       title: 'Flagged',
@@ -138,6 +141,7 @@ export default async function DashboardPage() {
       icon: AlertTriangle,
       color: 'text-red-600',
       bgColor: 'bg-red-100',
+      href: '/vault?status=flagged',
     },
   ];
 
@@ -158,19 +162,21 @@ export default async function DashboardPage() {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title}>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="mt-2 text-3xl font-bold text-gray-900">{stat.value}</p>
+            <Link key={stat.title} href={stat.href}>
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                      <p className="mt-2 text-3xl font-bold text-gray-900">{stat.value}</p>
+                    </div>
+                    <div className={`p-3 rounded-full ${stat.bgColor}`}>
+                      <Icon className={`h-6 w-6 ${stat.color}`} />
+                    </div>
                   </div>
-                  <div className={`p-3 rounded-full ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>
@@ -268,7 +274,7 @@ export default async function DashboardPage() {
         <CardContent>
           {recentActivity.length > 0 ? (
             <div className="space-y-4">
-              {recentActivity.map((log) => (
+              {recentActivity.map((log: any) => (
                 <div key={log.id} className="flex items-start gap-4 pb-4 border-b last:border-0">
                   <div className="p-2 bg-navy-100 rounded-full">
                     <Activity className="h-4 w-4 text-navy-600" />

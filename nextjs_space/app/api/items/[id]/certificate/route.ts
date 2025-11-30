@@ -211,7 +211,7 @@ export async function GET(
 
       // Show first 5 events
       const eventsToShow = item.provenanceEvents.slice(0, 5);
-      eventsToShow.forEach((event) => {
+      eventsToShow.forEach((event: any) => {
         const eventDate = new Date(event.occurredAt).toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'short',
