@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Search, Filter, Package, FileImage, Clock, ImageIcon } from 'lucide-react';
 import type { AssetCategory, AssetWithDetails } from '@/lib/types';
+import { ExportDialog } from '@/components/dashboard/export-dialog';
 
 export default function VaultPage() {
   const router = useRouter();
@@ -207,6 +208,23 @@ export default function VaultPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Results Header with Export */}
+      {!loading && items.length > 0 && (
+        <div className="flex justify-between items-center mb-4">
+          <div className="text-sm text-gray-600">
+            Showing <span className="font-semibold text-gray-900">{items.length}</span> {items.length === 1 ? 'asset' : 'assets'}
+            {(filters.categoryId !== 'all' || filters.status !== 'all' || filters.searchQuery) && (
+              <span className="ml-1">(filtered)</span>
+            )}
+          </div>
+          <ExportDialog
+            categoryFilter={filters.categoryId !== 'all' ? filters.categoryId : undefined}
+            statusFilter={filters.status !== 'all' ? filters.status : undefined}
+            totalItems={items.length}
+          />
+        </div>
+      )}
 
       {/* Items Grid */}
       {loading ? (
