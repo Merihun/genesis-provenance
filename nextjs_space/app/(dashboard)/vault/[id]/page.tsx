@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { AIAnalysisSection } from '@/components/dashboard/ai-analysis-section';
 import { 
   Loader2, 
   ChevronLeft, 
@@ -28,7 +29,8 @@ import {
   Shield,
   AlertCircle,
   Upload,
-  FileDown
+  FileDown,
+  Sparkles
 } from 'lucide-react';
 
 interface ItemDetails {
@@ -324,10 +326,14 @@ export default function ItemDetailPage() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="provenance">Provenance ({item.provenanceEvents?.length || 0})</TabsTrigger>
               <TabsTrigger value="media">Media ({item.mediaAssets?.length || 0})</TabsTrigger>
+              <TabsTrigger value="ai-auth">
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Authentication
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="space-y-6">
@@ -611,6 +617,14 @@ export default function ItemDetailPage() {
                   </div>
                 )}
               </div>
+            </TabsContent>
+
+            <TabsContent value="ai-auth">
+              <AIAnalysisSection
+                itemId={item.id}
+                itemName={`${item.brand || ''} ${item.model || item.makeModel || ''}`.trim() || 'Item'}
+                categorySlug={item.category.slug}
+              />
             </TabsContent>
           </Tabs>
         </div>
