@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
+import { downloadFile } from '@/lib/s3'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -100,7 +101,34 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ items })
+    // Generate signed URLs for media assets
+    const itemsWithSignedUrls = await Promise.all(
+      items.map(async (item) => {
+        if (item.mediaAssets && item.mediaAssets.length > 0) {
+          const mediaAssetsWithUrls = await Promise.all(
+            item.mediaAssets.map(async (asset) => {
+              try {
+                const signedUrl = await downloadFile(asset.cloudStoragePath, 3600);
+                return {
+                  ...asset,
+                  cloudStoragePath: signedUrl, // Replace S3 key with signed URL
+                };
+              } catch (error) {
+                console.error('Error generating signed URL:', error);
+                return asset; // Return original if signing fails
+              }
+            })
+          );
+          return {
+            ...item,
+            mediaAssets: mediaAssetsWithUrls,
+          };
+        }
+        return item;
+      })
+    );
+
+    return NextResponse.json({ items: itemsWithSignedUrls })
   } catch (error) {
     console.error('Error fetching items:', error)
     return NextResponse.json(

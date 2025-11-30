@@ -22,27 +22,17 @@ export default function VaultPage() {
   const [items, setItems] = useState<AssetWithDetails[]>([]);
   const [categories, setCategories] = useState<AssetCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    categoryId: 'all',
-    status: 'all',
+  
+  // Initialize filters from URL parameters immediately
+  const initialFilters = {
+    categoryId: searchParams?.get('category') || 'all',
+    status: searchParams?.get('status') || 'all',
     searchQuery: '',
     sortBy: 'date',
     sortOrder: 'desc'
-  });
-
-  // Read URL params and set initial filters
-  useEffect(() => {
-    const category = searchParams?.get('category');
-    const status = searchParams?.get('status');
-    
-    if (category || status) {
-      setFilters(prev => ({
-        ...prev,
-        ...(category && { categoryId: category }),
-        ...(status && { status: status })
-      }));
-    }
-  }, [searchParams]);
+  };
+  
+  const [filters, setFilters] = useState(initialFilters);
 
   useEffect(() => {
     fetchCategories();
