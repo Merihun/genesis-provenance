@@ -23,6 +23,10 @@ const createSavedSearchSchema = z.object({
     maxEstimatedValue: z.number().optional(),
   }),
   isDefault: z.boolean().default(false),
+  isPinned: z.boolean().default(false),
+  isShared: z.boolean().default(false),
+  icon: z.string().max(50).optional(),
+  color: z.string().max(20).optional(),
 })
 
 // GET /api/saved-searches - List all saved searches for the user
@@ -46,12 +50,29 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Parse query parameters
+    const { searchParams } = new URL(request.url)
+    const includeShared = searchParams.get('includeShared') !== 'false'
+
+    // Build where clause
+    const where: any = {
+      organizationId: user.organizationId,
+    }
+
+    // Include both user's own searches and shared org searches
+    if (includeShared) {
+      where.OR = [
+        { userId: user.id },
+        { isShared: true },
+      ]
+    } else {
+      where.userId = user.id
+    }
+
     const savedSearches = await prisma.savedSearch.findMany({
-      where: {
-        userId: user.id,
-        organizationId: user.organizationId,
-      },
+      where,
       orderBy: [
+        { isPinned: 'desc' },
         { isDefault: 'desc' },
         { createdAt: 'desc' },
       ],
@@ -113,6 +134,10 @@ export async function POST(request: NextRequest) {
         organizationId: user.organizationId,
         filters: validatedData.filters,
         isDefault: validatedData.isDefault,
+        isPinned: validatedData.isPinned,
+        isShared: validatedData.isShared,
+        icon: validatedData.icon,
+        color: validatedData.color,
       },
     })
 

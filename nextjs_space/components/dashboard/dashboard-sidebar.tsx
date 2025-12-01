@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Package, Settings, Users, LogOut, X } from 'lucide-react';
+import { Home, Package, Settings, Users, LogOut, X, BarChart3 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ export function DashboardSidebar({ userRole, isMobileMenuOpen, onCloseMobileMenu
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'My Vault', href: '/vault', icon: Package },
+    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Team', href: '/team', icon: Users },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];

@@ -59,13 +59,40 @@ export async function GET(request: NextRequest) {
     // Generate appropriate CSV
     let csvContent: string;
     let filename: string;
+    let template: string;
 
     if (exportType === 'summary') {
       csvContent = generatePortfolioSummaryCSV(items);
       filename = generateCSVFilename('portfolio-summary');
+      template = 'summary_csv';
     } else {
       csvContent = generateItemsCSV(items, { includeFinancials });
       filename = generateCSVFilename('vault-export');
+      template = 'full_csv';
+    }
+
+    // Track export history
+    try {
+      await prisma.exportHistory.create({
+        data: {
+          organizationId,
+          userId: (session.user as any)?.id,
+          template: template as any,
+          format: 'csv',
+          fileName: filename,
+          fileSize: Buffer.byteLength(csvContent, 'utf8'),
+          itemCount: items.length,
+          filters: {
+            category: categoryId || null,
+            status: status || null,
+            includeFinancials,
+          },
+          canReExport: true,
+        },
+      });
+    } catch (historyError) {
+      // Non-critical error, log but don't fail the export
+      console.error('Failed to save export history:', historyError);
     }
 
     // Return CSV file

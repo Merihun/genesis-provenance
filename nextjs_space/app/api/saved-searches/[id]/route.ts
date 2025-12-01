@@ -23,6 +23,10 @@ const updateSavedSearchSchema = z.object({
     maxEstimatedValue: z.number().optional(),
   }).optional(),
   isDefault: z.boolean().optional(),
+  isPinned: z.boolean().optional(),
+  isShared: z.boolean().optional(),
+  icon: z.string().max(50).optional(),
+  color: z.string().max(20).optional(),
 })
 
 // GET /api/saved-searches/[id] - Get a specific saved search
