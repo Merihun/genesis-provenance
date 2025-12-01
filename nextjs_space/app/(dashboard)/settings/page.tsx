@@ -2,14 +2,19 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User, CreditCard } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function SettingsPage() {
+  const pathname = usePathname();
   const { data: session, status } = useSession();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -44,8 +49,13 @@ export default function SettingsPage() {
     setIsLoading(false);
   };
 
+  const settingsNav = [
+    { name: 'Profile', href: '/settings', icon: User },
+    { name: 'Billing', href: '/settings/billing', icon: CreditCard },
+  ];
+
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-6xl">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 font-serif" style={{ fontFamily: 'var(--font-playfair)' }}>
@@ -54,6 +64,29 @@ export default function SettingsPage() {
         <p className="mt-2 text-gray-600">
           Manage your account settings and preferences
         </p>
+      </div>
+
+      {/* Settings Navigation */}
+      <div className="flex gap-4 border-b border-gray-200">
+        {settingsNav.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={cn(
+                'flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'border-blue-900 text-blue-900'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {item.name}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Profile Information */}

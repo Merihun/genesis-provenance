@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,8 +21,10 @@ import {
   XCircle,
   Loader2,
   ArrowUpCircle,
+  User,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 
 interface UsageData {
   plan: string;
@@ -50,11 +54,17 @@ interface SubscriptionData {
 }
 
 export default function BillingPage() {
+  const pathname = usePathname();
   const { data: session, status: sessionStatus } = useSession() || {};
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
+
+  const settingsNav = [
+    { name: 'Profile', href: '/settings', icon: User },
+    { name: 'Billing', href: '/settings/billing', icon: CreditCard },
+  ];
 
   useEffect(() => {
     if (sessionStatus === 'loading') return;
@@ -137,13 +147,36 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Billing & Subscription</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground mt-2">
-          Manage your subscription plan and track usage
+          Manage your account settings and preferences
         </p>
+      </div>
+
+      {/* Settings Navigation */}
+      <div className="flex gap-4 border-b border-gray-200">
+        {settingsNav.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={cn(
+                'flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'border-blue-900 text-blue-900'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {item.name}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Current Plan Card */}

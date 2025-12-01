@@ -38,33 +38,31 @@ export async function POST(request: Request) {
     // Hash password
     const passwordHash = await bcrypt.hash(validatedData.password, 10);
 
-    // Create organization if needed (for reseller/partner) or if organizationName provided
-    let organizationId = null;
-    if (validatedData.role !== 'collector' || validatedData.organizationName) {
-      const orgType =
-        validatedData.role === 'reseller'
-          ? 'reseller'
-          : validatedData.role === 'partner'
-          ? 'partner'
-          : 'individual';
+    // IMPORTANT: Create organization for ALL users (required for the app to function)
+    // Determine organization type based on role
+    const orgType =
+      validatedData.role === 'reseller'
+        ? 'reseller'
+        : validatedData.role === 'partner'
+        ? 'partner'
+        : 'individual'; // Default for collectors and admins
 
-      const organization = await prisma.organization.create({
-        data: {
-          name: validatedData.organizationName || `${validatedData.fullName}'s Organization`,
-          type: orgType,
-        },
-      });
-      organizationId = organization.id;
-    }
+    // Create organization with appropriate name
+    const organization = await prisma.organization.create({
+      data: {
+        name: validatedData.organizationName || `${validatedData.fullName}'s Organization`,
+        type: orgType,
+      },
+    });
 
-    // Create user
+    // Create user with organization
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
         passwordHash,
         fullName: validatedData.fullName,
         role: validatedData.role,
-        organizationId,
+        organizationId: organization.id,
       },
       select: {
         id: true,
