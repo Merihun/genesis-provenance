@@ -72,10 +72,23 @@ export default function AddAssetPage() {
     
     try {
       // Create the item
-      const itemPayload = {
+      const itemPayload: any = {
         ...formData,
-        year: formData.year ? parseInt(formData.year) : undefined,
       };
+
+      // Properly convert year to number or undefined
+      if (formData.year) {
+        const yearNum = typeof formData.year === 'string' ? parseInt(formData.year, 10) : Number(formData.year);
+        if (!isNaN(yearNum) && yearNum > 0) {
+          itemPayload.year = yearNum;
+        } else {
+          delete itemPayload.year; // Remove invalid year
+        }
+      } else {
+        delete itemPayload.year; // Remove empty year
+      }
+      
+      console.log('Submitting item payload:', itemPayload);
       
       const res = await fetch('/api/items', {
         method: 'POST',
@@ -85,7 +98,10 @@ export default function AddAssetPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || errorData.details || 'Failed to create item');
+        console.error('Server error response:', errorData);
+        // Extract the most specific error message
+        const errorMsg = errorData.details || errorData.error || 'Failed to create item';
+        throw new Error(errorMsg);
       }
 
       const { item } = await res.json();

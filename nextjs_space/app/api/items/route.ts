@@ -164,24 +164,44 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Received item creation request:', JSON.stringify(body, null, 2))
     
+    // Validate request body with Zod
     const validatedData = createItemSchema.parse(body)
+    console.log('Validated data:', JSON.stringify(validatedData, null, 2))
 
     // Convert string prices to Decimal
     const itemData: any = {
-      ...validatedData,
       organizationId: user.organizationId,
       createdByUserId: user.id,
+      categoryId: validatedData.categoryId,
     }
 
+    // Add optional fields only if they have valid values
+    if (validatedData.brand) itemData.brand = validatedData.brand
+    if (validatedData.model) itemData.model = validatedData.model
+    if (validatedData.year) itemData.year = validatedData.year
+    if (validatedData.referenceNumber) itemData.referenceNumber = validatedData.referenceNumber
+    if (validatedData.serialNumber) itemData.serialNumber = validatedData.serialNumber
+    if (validatedData.vin) itemData.vin = validatedData.vin
+    if (validatedData.makeModel) itemData.makeModel = validatedData.makeModel
+    if (typeof validatedData.matchingNumbers === 'boolean') itemData.matchingNumbers = validatedData.matchingNumbers
+    if (validatedData.notes) itemData.notes = validatedData.notes
+
     if (validatedData.purchaseDate) {
-      itemData.purchaseDate = new Date(validatedData.purchaseDate)
+      try {
+        itemData.purchaseDate = new Date(validatedData.purchaseDate)
+      } catch (e) {
+        return NextResponse.json(
+          { error: 'Invalid purchase date format' },
+          { status: 400 }
+        )
+      }
     }
 
     if (validatedData.purchasePrice) {
       const parsedPrice = parseFloat(validatedData.purchasePrice)
-      if (isNaN(parsedPrice)) {
+      if (isNaN(parsedPrice) || parsedPrice < 0) {
         return NextResponse.json(
-          { error: 'Invalid purchase price format' },
+          { error: 'Invalid purchase price format. Must be a positive number.' },
           { status: 400 }
         )
       }
@@ -190,9 +210,9 @@ export async function POST(request: NextRequest) {
 
     if (validatedData.estimatedValue) {
       const parsedValue = parseFloat(validatedData.estimatedValue)
-      if (isNaN(parsedValue)) {
+      if (isNaN(parsedValue) || parsedValue < 0) {
         return NextResponse.json(
-          { error: 'Invalid estimated value format' },
+          { error: 'Invalid estimated value format. Must be a positive number.' },
           { status: 400 }
         )
       }
@@ -223,14 +243,38 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error('Validation error:', error.errors)
+      const firstError = error.errors[0]
+      const fieldName = firstError.path.join('.')
+      const errorMsg = `${fieldName}: ${firstError.message}`
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Validation error', details: errorMsg, validationErrors: error.errors },
         { status: 400 }
       )
     }
+    
+    // Handle Prisma errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const prismaError = error as any
+      console.error('Prisma error:', prismaError)
+      
+      if (prismaError.code === 'P2002') {
+        return NextResponse.json(
+          { error: 'Duplicate entry', details: 'An item with this information already exists' },
+          { status: 409 }
+        )
+      }
+      
+      if (prismaError.code === 'P2003') {
+        return NextResponse.json(
+          { error: 'Invalid reference', details: 'The category or organization ID is invalid' },
+          { status: 400 }
+        )
+      }
+    }
+    
     console.error('Error creating item:', error)
     // Provide more detailed error message
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     return NextResponse.json(
       { error: 'Failed to create item', details: errorMessage },
       { status: 500 }
