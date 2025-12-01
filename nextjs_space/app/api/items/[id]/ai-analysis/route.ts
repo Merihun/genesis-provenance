@@ -3,8 +3,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { generateMockAnalysis } from '@/lib/ai-mock';
-import { generateGoogleVisionAnalysis } from '@/lib/ai-google-vision';
-import { generateRekognitionAnalysis } from '@/lib/ai-aws-rekognition';
+// Google Vision and AWS Rekognition are imported dynamically to avoid build issues
+// import { generateGoogleVisionAnalysis } from '@/lib/ai-google-vision';
+// import { generateRekognitionAnalysis } from '@/lib/ai-aws-rekognition';
 import { getSignedUrlForAI } from '@/lib/s3';
 import { checkFeatureAccess, trackFeatureUsage } from '@/lib/feature-gates';
 import { 
@@ -285,15 +286,29 @@ async function processAnalysis(
       console.log(`[AI Analysis] Running dual-mode analysis`);
       
       const primaryProviderPromise = selectedProvider === 'google-vision' && imageUrls.length > 0
-        ? generateGoogleVisionAnalysis(item, imageUrls).catch(err => {
-            console.error(`[AI Analysis] Google Vision failed in dual-mode:`, err);
-            return null;
-          })
+        ? (async () => {
+            try {
+              console.warn(`[AI Analysis] Google Vision is currently disabled. Falling back to mock.`);
+              // const { generateGoogleVisionAnalysis } = await import('@/lib/ai-google-vision');
+              // return await generateGoogleVisionAnalysis(item, imageUrls);
+              return null;
+            } catch (err) {
+              console.error(`[AI Analysis] Google Vision failed in dual-mode:`, err);
+              return null;
+            }
+          })()
         : selectedProvider === 'aws-rekognition' && imageUrls.length > 0
-        ? generateRekognitionAnalysis(item, imageUrls).catch(err => {
-            console.error(`[AI Analysis] AWS Rekognition failed in dual-mode:`, err);
-            return null;
-          })
+        ? (async () => {
+            try {
+              console.warn(`[AI Analysis] AWS Rekognition is currently disabled. Falling back to mock.`);
+              // const { generateRekognitionAnalysis } = await import('@/lib/ai-aws-rekognition');
+              // return await generateRekognitionAnalysis(item, imageUrls);
+              return null;
+            } catch (err) {
+              console.error(`[AI Analysis] AWS Rekognition failed in dual-mode:`, err);
+              return null;
+            }
+          })()
         : Promise.resolve(null);
       
       const [primaryRes, mockRes] = await Promise.all([
@@ -320,21 +335,29 @@ async function processAnalysis(
         );
       }
     } else if (selectedProvider === 'google-vision') {
-      console.log(`[AI Analysis] Using Google Cloud Vision AI for item ${item.id}`);
-      if (imageUrls.length === 0) {
-        console.warn(`[AI Analysis] No valid image URLs, falling back to mock analysis`);
-        result = await generateMockAnalysis(item, imageIds);
-      } else {
-        result = await generateGoogleVisionAnalysis(item, imageUrls);
-      }
+      console.log(`[AI Analysis] Google Vision requested but currently disabled for item ${item.id}`);
+      console.warn(`[AI Analysis] Falling back to mock analysis`);
+      result = await generateMockAnalysis(item, imageIds);
+      // Uncomment when Google Vision dependencies are properly configured:
+      // if (imageUrls.length === 0) {
+      //   console.warn(`[AI Analysis] No valid image URLs, falling back to mock analysis`);
+      //   result = await generateMockAnalysis(item, imageIds);
+      // } else {
+      //   const { generateGoogleVisionAnalysis } = await import('@/lib/ai-google-vision');
+      //   result = await generateGoogleVisionAnalysis(item, imageUrls);
+      // }
     } else if (selectedProvider === 'aws-rekognition') {
-      console.log(`[AI Analysis] Using AWS Rekognition for item ${item.id}`);
-      if (imageUrls.length === 0) {
-        console.warn(`[AI Analysis] No valid image URLs, falling back to mock analysis`);
-        result = await generateMockAnalysis(item, imageIds);
-      } else {
-        result = await generateRekognitionAnalysis(item, imageUrls);
-      }
+      console.log(`[AI Analysis] AWS Rekognition requested but currently disabled for item ${item.id}`);
+      console.warn(`[AI Analysis] Falling back to mock analysis`);
+      result = await generateMockAnalysis(item, imageIds);
+      // Uncomment when AWS Rekognition dependencies are properly configured:
+      // if (imageUrls.length === 0) {
+      //   console.warn(`[AI Analysis] No valid image URLs, falling back to mock analysis`);
+      //   result = await generateMockAnalysis(item, imageIds);
+      // } else {
+      //   const { generateRekognitionAnalysis } = await import('@/lib/ai-aws-rekognition');
+      //   result = await generateRekognitionAnalysis(item, imageUrls);
+      // }
     } else {
       console.log(`[AI Analysis] Using mock AI analysis for item ${item.id}`);
       result = await generateMockAnalysis(item, imageIds);
