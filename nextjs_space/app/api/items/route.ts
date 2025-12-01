@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 import { downloadFile } from '@/lib/s3'
+import { checkFeatureAccess, trackFeatureUsage } from '@/lib/feature-gates'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -161,6 +162,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check feature access (usage limits)
+    const featureCheck = await checkFeatureAccess(user.organizationId, 'asset_created')
+    if (!featureCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Asset limit reached',
+          message: `You've reached your ${featureCheck.plan} plan limit of ${featureCheck.limit} assets. Please upgrade to continue.`,
+          upgradeRequired: true,
+          limit: featureCheck.limit,
+          current: featureCheck.current,
+        },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     console.log('Received item creation request:', JSON.stringify(body, null, 2))
     
@@ -236,6 +252,17 @@ export async function POST(request: NextRequest) {
         eventType: 'registered',
         title: 'Asset Registered',
         description: `${item.category.name} registered in the vault`,
+      },
+    })
+
+    // Track usage for billing
+    await trackFeatureUsage({
+      organizationId: user.organizationId,
+      feature: 'asset_created',
+      count: 1,
+      metadata: {
+        itemId: item.id,
+        categoryId: item.categoryId,
       },
     })
 

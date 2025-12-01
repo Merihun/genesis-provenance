@@ -3,12 +3,21 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import {
   CreditCard,
   TrendingUp,
@@ -22,6 +31,8 @@ import {
   Loader2,
   ArrowUpCircle,
   User,
+  ExternalLink,
+  Check,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
@@ -51,15 +62,22 @@ interface SubscriptionData {
   status: string;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  stripeCustomerId?: string | null;
 }
 
 export default function BillingPage() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: session, status: sessionStatus } = useSession() || {};
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'collector' | 'dealer' | 'enterprise'>('dealer');
+  const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  const [isOpeningPortal, setIsOpeningPortal] = useState(false);
 
   const settingsNav = [
     { name: 'Profile', href: '/settings', icon: User },
@@ -72,6 +90,30 @@ export default function BillingPage() {
 
     fetchBillingData();
   }, [session, sessionStatus]);
+
+  // Handle success/cancel redirects from Stripe Checkout
+  useEffect(() => {
+    const success = searchParams?.get('success');
+    const canceled = searchParams?.get('canceled');
+
+    if (success === 'true') {
+      toast({
+        title: 'Success!',
+        description: 'Your subscription has been updated successfully.',
+      });
+      // Remove query params and refresh data
+      window.history.replaceState(null, '', '/settings/billing');
+      fetchBillingData();
+    } else if (canceled === 'true') {
+      toast({
+        title: 'Canceled',
+        description: 'Subscription upgrade was canceled.',
+        variant: 'destructive',
+      });
+      // Remove query params
+      window.history.replaceState(null, '', '/settings/billing');
+    }
+  }, [searchParams]);
 
   const fetchBillingData = async () => {
     try {
@@ -99,6 +141,73 @@ export default function BillingPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    setIsUpgrading(true);
+    try {
+      const response = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan: selectedPlan,
+          billingCycle: selectedCycle,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: 'Error',
+          description: data.message || 'Failed to create checkout session',
+          variant: 'destructive',
+        });
+        setIsUpgrading(false);
+      }
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to initiate upgrade',
+        variant: 'destructive',
+      });
+      setIsUpgrading(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setIsOpeningPortal(true);
+    try {
+      const response = await fetch('/api/billing/portal', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        // Open Stripe Customer Portal
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: 'Error',
+          description: data.message || 'Failed to open customer portal',
+          variant: 'destructive',
+        });
+        setIsOpeningPortal(false);
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to open subscription management',
+        variant: 'destructive',
+      });
+      setIsOpeningPortal(false);
     }
   };
 
@@ -199,10 +308,33 @@ export default function BillingPage() {
               </p>
             )}
           </div>
-          <Button disabled className="gap-2">
-            <ArrowUpCircle className="h-4 w-4" />
-            Upgrade (Coming in Phase 5B)
-          </Button>
+          <div className="flex gap-2">
+            {subscriptionData?.status === 'active' && subscriptionData.stripeCustomerId ? (
+              <Button
+                onClick={handleManageSubscription}
+                disabled={isOpeningPortal}
+                variant="outline"
+                className="gap-2"
+              >
+                {isOpeningPortal ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="h-4 w-4" />
+                )}
+                Manage Subscription
+              </Button>
+            ) : null}
+            {usageData && usageData.plan !== 'enterprise' && (
+              <Button
+                onClick={() => setShowUpgradeDialog(true)}
+                disabled={isUpgrading}
+                className="gap-2"
+              >
+                <ArrowUpCircle className="h-4 w-4" />
+                Upgrade Plan
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
 
@@ -372,13 +504,170 @@ export default function BillingPage() {
         </Card>
       )}
 
-      {/* Payment Method - Placeholder */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
-        <p className="text-muted-foreground">
-          Payment management will be available in Phase 5B through Stripe Customer Portal.
-        </p>
-      </Card>
+      {/* Payment Method */}
+      {subscriptionData?.status === 'active' && subscriptionData.stripeCustomerId && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Payment Method</h2>
+              <p className="text-sm text-muted-foreground">
+                Manage your payment methods, view invoices, and update billing details
+              </p>
+            </div>
+            <Button
+              onClick={handleManageSubscription}
+              disabled={isOpeningPortal}
+              variant="outline"
+              className="gap-2"
+            >
+              {isOpeningPortal ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ExternalLink className="h-4 w-4" />
+              )}
+              Manage
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Upgrade Dialog */}
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Upgrade Your Plan</DialogTitle>
+            <DialogDescription>
+              Choose a plan that fits your needs and unlock more features.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Plan Selection */}
+            <div>
+              <Label className="text-base font-semibold mb-3 block">Select Plan</Label>
+              <RadioGroup value={selectedPlan} onValueChange={(value: any) => setSelectedPlan(value)}>
+                <div className="space-y-3">
+                  {/* Dealer Plan */}
+                  {usageData && usageData.plan !== 'dealer' && usageData.plan !== 'enterprise' && (
+                    <Label
+                      htmlFor="dealer"
+                      className="flex items-start space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-accent"
+                    >
+                      <RadioGroupItem value="dealer" id="dealer" className="mt-1" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">Dealer</span>
+                          <Badge>Most Popular</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Perfect for dealerships and resellers
+                        </p>
+                        <p className="text-sm font-medium mt-2">
+                          {selectedCycle === 'monthly' ? '$99/month' : '$990/year (save $198)'}
+                        </p>
+                        <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                          <li className="flex items-center gap-1">
+                            <Check className="h-3 w-3" /> 500 assets
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <Check className="h-3 w-3" /> 5 team members
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <Check className="h-3 w-3" /> 250 AI analyses/month
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <Check className="h-3 w-3" /> Advanced analytics
+                          </li>
+                        </ul>
+                      </div>
+                    </Label>
+                  )}
+
+                  {/* Enterprise Plan */}
+                  {usageData && usageData.plan !== 'enterprise' && (
+                    <Label
+                      htmlFor="enterprise"
+                      className="flex items-start space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-accent"
+                    >
+                      <RadioGroupItem value="enterprise" id="enterprise" className="mt-1" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">Enterprise</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          For large organizations with complex needs
+                        </p>
+                        <p className="text-sm font-medium mt-2">
+                          {selectedCycle === 'monthly' ? '$399/month' : '$3,990/year (save $798)'}
+                        </p>
+                        <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                          <li className="flex items-center gap-1">
+                            <Check className="h-3 w-3" /> Unlimited assets
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <Check className="h-3 w-3" /> Unlimited team members
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <Check className="h-3 w-3" /> Unlimited AI analyses
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <Check className="h-3 w-3" /> Priority support + API access
+                          </li>
+                        </ul>
+                      </div>
+                    </Label>
+                  )}
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Billing Cycle Selection */}
+            <div>
+              <Label className="text-base font-semibold mb-3 block">Billing Cycle</Label>
+              <RadioGroup value={selectedCycle} onValueChange={(value: any) => setSelectedCycle(value)}>
+                <div className="grid grid-cols-2 gap-3">
+                  <Label
+                    htmlFor="monthly"
+                    className="flex flex-col items-center justify-center border rounded-lg p-4 cursor-pointer hover:bg-accent"
+                  >
+                    <RadioGroupItem value="monthly" id="monthly" className="mb-2" />
+                    <span className="font-medium">Monthly</span>
+                    <span className="text-xs text-muted-foreground">Pay monthly</span>
+                  </Label>
+                  <Label
+                    htmlFor="annual"
+                    className="flex flex-col items-center justify-center border rounded-lg p-4 cursor-pointer hover:bg-accent"
+                  >
+                    <RadioGroupItem value="annual" id="annual" className="mb-2" />
+                    <span className="font-medium">Annual</span>
+                    <span className="text-xs text-green-600">Save 2 months</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowUpgradeDialog(false)}
+              disabled={isUpgrading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpgrade} disabled={isUpgrading}>
+              {isUpgrading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Continue to Checkout'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

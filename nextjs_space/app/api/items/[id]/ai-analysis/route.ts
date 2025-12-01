@@ -6,6 +6,7 @@ import { generateMockAnalysis } from '@/lib/ai-mock';
 import { generateGoogleVisionAnalysis } from '@/lib/ai-google-vision';
 import { generateRekognitionAnalysis } from '@/lib/ai-aws-rekognition';
 import { getSignedUrlForAI } from '@/lib/s3';
+import { checkFeatureAccess, trackFeatureUsage } from '@/lib/feature-gates';
 import { 
   selectAIProvider, 
   isDualModeEnabled, 
@@ -119,6 +120,21 @@ export async function POST(
 
     if (item.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Check feature access (usage limits)
+    const featureCheck = await checkFeatureAccess(organizationId, 'ai_analysis');
+    if (!featureCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'AI analysis limit reached',
+          message: `You've reached your ${featureCheck.plan} plan limit of ${featureCheck.limit} AI analyses this month. Please upgrade to continue.`,
+          upgradeRequired: true,
+          limit: featureCheck.limit,
+          current: featureCheck.current,
+        },
+        { status: 403 }
+      );
     }
 
     // Check if there are any photos to analyze
@@ -358,6 +374,18 @@ async function processAnalysis(
           dualMode: dualMode,
         },
         occurredAt: new Date(),
+      },
+    });
+
+    // Track usage for billing
+    await trackFeatureUsage({
+      organizationId: item.organizationId,
+      feature: 'ai_analysis',
+      count: 1,
+      metadata: {
+        itemId: item.id,
+        analysisId,
+        provider: apiProviderName,
       },
     });
   } catch (error) {
