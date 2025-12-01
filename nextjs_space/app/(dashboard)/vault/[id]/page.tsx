@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { AIAnalysisSection } from '@/components/dashboard/ai-analysis-section';
@@ -66,12 +67,31 @@ export default function ItemDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showAddEventDialog, setShowAddEventDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [eventForm, setEventForm] = useState({
     eventType: 'note_added',
     title: '',
     description: '',
     occurredAt: new Date().toISOString().split('T')[0],
+  });
+
+  const [editForm, setEditForm] = useState({
+    brand: '',
+    model: '',
+    year: '',
+    serialNumber: '',
+    referenceNumber: '',
+    vin: '',
+    makeModel: '',
+    matchingNumbers: false,
+    purchaseDate: '',
+    purchasePrice: '',
+    estimatedValue: '',
+    notes: '',
+    status: 'pending',
   });
 
   useEffect(() => {
@@ -99,6 +119,139 @@ export default function ItemDetailPage() {
       console.error('Error fetching item:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEdit = () => {
+    if (!item) return;
+    
+    // Populate edit form with current item data
+    setEditForm({
+      brand: item.brand || '',
+      model: item.model || '',
+      year: item.year?.toString() || '',
+      serialNumber: item.serialNumber || '',
+      referenceNumber: item.referenceNumber || '',
+      vin: item.vin || '',
+      makeModel: item.makeModel || '',
+      matchingNumbers: item.matchingNumbers || false,
+      purchaseDate: item.purchaseDate ? new Date(item.purchaseDate).toISOString().split('T')[0] : '',
+      purchasePrice: item.purchasePrice?.toString() || '',
+      estimatedValue: item.estimatedValue?.toString() || '',
+      notes: item.notes || '',
+      status: item.status || 'pending',
+    });
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditForm({
+      brand: '',
+      model: '',
+      year: '',
+      serialNumber: '',
+      referenceNumber: '',
+      vin: '',
+      makeModel: '',
+      matchingNumbers: false,
+      purchaseDate: '',
+      purchasePrice: '',
+      estimatedValue: '',
+      notes: '',
+      status: 'pending',
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      setIsSubmitting(true);
+
+      // Prepare payload
+      const payload: any = {
+        brand: editForm.brand || undefined,
+        model: editForm.model || undefined,
+        serialNumber: editForm.serialNumber || undefined,
+        referenceNumber: editForm.referenceNumber || undefined,
+        vin: editForm.vin || undefined,
+        makeModel: editForm.makeModel || undefined,
+        matchingNumbers: editForm.matchingNumbers,
+        purchaseDate: editForm.purchaseDate || undefined,
+        purchasePrice: editForm.purchasePrice || undefined,
+        estimatedValue: editForm.estimatedValue || undefined,
+        notes: editForm.notes || undefined,
+        status: editForm.status,
+      };
+
+      // Handle year conversion
+      if (editForm.year) {
+        const yearNum = parseInt(editForm.year, 10);
+        if (!isNaN(yearNum) && yearNum > 0) {
+          payload.year = yearNum;
+        }
+      }
+
+      const res = await fetch(`/api/items/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || errorData.details || 'Failed to update item');
+      }
+
+      const { item: updatedItem } = await res.json();
+      setItem(updatedItem);
+      setIsEditing(false);
+
+      toast({
+        title: 'Success',
+        description: 'Asset updated successfully',
+      });
+    } catch (error) {
+      console.error('Error updating item:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update asset. Please try again.';
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+
+      const res = await fetch(`/api/items/${params.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete item');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Asset deleted successfully',
+      });
+
+      router.push('/vault');
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete asset. Please try again.';
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -306,18 +459,51 @@ export default function ItemDetailPage() {
             )}
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleDownloadCertificate} className="bg-navy-600 hover:bg-navy-700">
-              <FileDown className="h-4 w-4 mr-2" />
-              Download Certificate
-            </Button>
-            <Button variant="outline">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-            <Button variant="outline" className="text-red-600 hover:text-red-700">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
+            {!isEditing && (
+              <>
+                <Button onClick={handleDownloadCertificate} className="bg-navy-600 hover:bg-navy-700">
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Download Certificate
+                </Button>
+                <Button variant="outline" onClick={handleEdit}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="text-red-600 hover:text-red-700"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </>
+            )}
+            {isEditing && (
+              <>
+                <Button 
+                  onClick={handleSaveEdit}
+                  disabled={isSubmitting}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelEdit}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -342,86 +528,232 @@ export default function ItemDetailPage() {
                   <CardTitle>Asset Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    {item.brand && (
-                      <div>
-                        <Label className="text-gray-500">Brand</Label>
-                        <div className="mt-1 font-medium">{item.brand}</div>
-                      </div>
-                    )}
-                    {item.model && (
-                      <div>
-                        <Label className="text-gray-500">Model</Label>
-                        <div className="mt-1 font-medium">{item.model}</div>
-                      </div>
-                    )}
-                    {item.year && (
-                      <div>
-                        <Label className="text-gray-500">Year</Label>
-                        <div className="mt-1 font-medium">{item.year}</div>
-                      </div>
-                    )}
-                    {item.makeModel && (
-                      <div className="col-span-2">
-                        <Label className="text-gray-500">Full Make/Model</Label>
-                        <div className="mt-1 font-medium">{item.makeModel}</div>
-                      </div>
-                    )}
-                    {item.vin && (
-                      <div className="col-span-2">
-                        <Label className="text-gray-500">VIN</Label>
-                        <div className="mt-1 font-mono text-sm">{item.vin}</div>
-                      </div>
-                    )}
-                    {item.serialNumber && (
-                      <div>
-                        <Label className="text-gray-500">Serial Number</Label>
-                        <div className="mt-1 font-mono text-sm">{item.serialNumber}</div>
-                      </div>
-                    )}
-                    {item.referenceNumber && (
-                      <div>
-                        <Label className="text-gray-500">Reference Number</Label>
-                        <div className="mt-1 font-mono text-sm">{item.referenceNumber}</div>
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    {item.purchaseDate && (
-                      <div>
-                        <Label className="text-gray-500">Purchase Date</Label>
-                        <div className="mt-1 font-medium">
-                          {new Date(item.purchaseDate).toLocaleDateString()}
-                        </div>
-                      </div>
-                    )}
-                    {item.purchasePrice && (
-                      <div>
-                        <Label className="text-gray-500">Purchase Price</Label>
-                        <div className="mt-1 font-medium text-green-600">
-                          ${parseFloat(item.purchasePrice.toString()).toLocaleString()}
-                        </div>
-                      </div>
-                    )}
-                    {item.estimatedValue && (
-                      <div>
-                        <Label className="text-gray-500">Current Est. Value</Label>
-                        <div className="mt-1 font-semibold text-green-600 text-lg">
-                          ${parseFloat(item.estimatedValue.toString()).toLocaleString()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {item.notes && (
+                  {!isEditing ? (
                     <>
+                      {/* Read-only view */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {item.brand && (
+                          <div>
+                            <Label className="text-gray-500">Brand</Label>
+                            <div className="mt-1 font-medium">{item.brand}</div>
+                          </div>
+                        )}
+                        {item.model && (
+                          <div>
+                            <Label className="text-gray-500">Model</Label>
+                            <div className="mt-1 font-medium">{item.model}</div>
+                          </div>
+                        )}
+                        {item.year && (
+                          <div>
+                            <Label className="text-gray-500">Year</Label>
+                            <div className="mt-1 font-medium">{item.year}</div>
+                          </div>
+                        )}
+                        {item.makeModel && (
+                          <div className="col-span-2">
+                            <Label className="text-gray-500">Full Make/Model</Label>
+                            <div className="mt-1 font-medium">{item.makeModel}</div>
+                          </div>
+                        )}
+                        {item.vin && (
+                          <div className="col-span-2">
+                            <Label className="text-gray-500">VIN</Label>
+                            <div className="mt-1 font-mono text-sm">{item.vin}</div>
+                          </div>
+                        )}
+                        {item.serialNumber && (
+                          <div>
+                            <Label className="text-gray-500">Serial Number</Label>
+                            <div className="mt-1 font-mono text-sm">{item.serialNumber}</div>
+                          </div>
+                        )}
+                        {item.referenceNumber && (
+                          <div>
+                            <Label className="text-gray-500">Reference Number</Label>
+                            <div className="mt-1 font-mono text-sm">{item.referenceNumber}</div>
+                          </div>
+                        )}
+                        <div className="col-span-2">
+                          <Label className="text-gray-500">Status</Label>
+                          <div className="mt-1">{getStatusBadge(item.status)}</div>
+                        </div>
+                      </div>
+
                       <Separator />
-                      <div>
-                        <Label className="text-gray-500">Notes</Label>
-                        <div className="mt-1 text-sm whitespace-pre-wrap">{item.notes}</div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {item.purchaseDate && (
+                          <div>
+                            <Label className="text-gray-500">Purchase Date</Label>
+                            <div className="mt-1 font-medium">
+                              {new Date(item.purchaseDate).toLocaleDateString()}
+                            </div>
+                          </div>
+                        )}
+                        {item.purchasePrice && (
+                          <div>
+                            <Label className="text-gray-500">Purchase Price</Label>
+                            <div className="mt-1 font-medium text-green-600">
+                              ${parseFloat(item.purchasePrice.toString()).toLocaleString()}
+                            </div>
+                          </div>
+                        )}
+                        {item.estimatedValue && (
+                          <div>
+                            <Label className="text-gray-500">Current Est. Value</Label>
+                            <div className="mt-1 font-semibold text-green-600 text-lg">
+                              ${parseFloat(item.estimatedValue.toString()).toLocaleString()}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {item.notes && (
+                        <>
+                          <Separator />
+                          <div>
+                            <Label className="text-gray-500">Notes</Label>
+                            <div className="mt-1 text-sm whitespace-pre-wrap">{item.notes}</div>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {/* Edit mode - Editable fields */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="brand">Brand</Label>
+                          <Input
+                            id="brand"
+                            value={editForm.brand}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, brand: e.target.value }))}
+                            placeholder="e.g., Ferrari"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="model">Model</Label>
+                          <Input
+                            id="model"
+                            value={editForm.model}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, model: e.target.value }))}
+                            placeholder="e.g., 458 Italia"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="year">Year</Label>
+                          <Input
+                            id="year"
+                            type="number"
+                            value={editForm.year}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, year: e.target.value }))}
+                            placeholder="2014"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="status">Status</Label>
+                          <Select
+                            value={editForm.status}
+                            onValueChange={(value) => setEditForm(prev => ({ ...prev, status: value }))}
+                          >
+                            <SelectTrigger id="status">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending Review</SelectItem>
+                              <SelectItem value="verified">Verified</SelectItem>
+                              <SelectItem value="flagged">Flagged</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                          <Label htmlFor="makeModel">Full Make/Model</Label>
+                          <Input
+                            id="makeModel"
+                            value={editForm.makeModel}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, makeModel: e.target.value }))}
+                            placeholder="e.g., 2014 Ferrari 458 Italia"
+                          />
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                          <Label htmlFor="vin">VIN</Label>
+                          <Input
+                            id="vin"
+                            value={editForm.vin}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, vin: e.target.value.toUpperCase() }))}
+                            placeholder="17-character VIN"
+                            className="font-mono"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="serialNumber">Serial Number</Label>
+                          <Input
+                            id="serialNumber"
+                            value={editForm.serialNumber}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, serialNumber: e.target.value }))}
+                            placeholder="Serial number"
+                            className="font-mono"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="referenceNumber">Reference Number</Label>
+                          <Input
+                            id="referenceNumber"
+                            value={editForm.referenceNumber}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, referenceNumber: e.target.value }))}
+                            placeholder="Reference number"
+                            className="font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="purchaseDate">Purchase Date</Label>
+                          <Input
+                            id="purchaseDate"
+                            type="date"
+                            value={editForm.purchaseDate}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, purchaseDate: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="purchasePrice">Purchase Price ($)</Label>
+                          <Input
+                            id="purchasePrice"
+                            type="number"
+                            value={editForm.purchasePrice}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, purchasePrice: e.target.value }))}
+                            placeholder="50000"
+                          />
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                          <Label htmlFor="estimatedValue">Current Est. Value ($)</Label>
+                          <Input
+                            id="estimatedValue"
+                            type="number"
+                            value={editForm.estimatedValue}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, estimatedValue: e.target.value }))}
+                            placeholder="75000"
+                          />
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="space-y-2">
+                        <Label htmlFor="notes">Notes</Label>
+                        <Textarea
+                          id="notes"
+                          value={editForm.notes}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                          placeholder="Any additional notes or details..."
+                          rows={4}
+                        />
                       </div>
                     </>
                   )}
@@ -671,6 +1003,36 @@ export default function ItemDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this asset
+              and remove all associated data including media files, provenance events, and certificates.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Asset'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
