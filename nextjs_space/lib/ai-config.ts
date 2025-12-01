@@ -21,21 +21,32 @@ export interface AIAnalysisConfig {
 
 /**
  * Get AI provider configuration from environment variables
+ * Now supports both Google Vision AI and AWS Rekognition
  */
 export function getAIProviderConfig(): AIProviderConfig {
   const googleVisionEnabled = process.env.GOOGLE_VISION_ENABLED === 'true';
+  const awsRekognitionEnabled = process.env.AWS_REKOGNITION_ENABLED === 'true';
   const rolloutPercentage = parseInt(process.env.GOOGLE_VISION_ROLLOUT_PERCENTAGE || '100', 10);
   
+  // Determine primary provider
+  let provider: AIProvider = 'mock';
+  if (awsRekognitionEnabled) {
+    provider = 'aws-rekognition';
+  } else if (googleVisionEnabled) {
+    provider = 'google-vision';
+  }
+  
   return {
-    provider: googleVisionEnabled ? 'google-vision' : 'mock',
-    enabled: googleVisionEnabled,
+    provider,
+    enabled: googleVisionEnabled || awsRekognitionEnabled,
     rolloutPercentage: Math.min(Math.max(rolloutPercentage, 0), 100),
-    useForAnalysis: googleVisionEnabled,
+    useForAnalysis: googleVisionEnabled || awsRekognitionEnabled,
   };
 }
 
 /**
  * Get comprehensive AI analysis configuration
+ * Supports multi-provider strategy
  */
 export function getAIAnalysisConfig(): AIAnalysisConfig {
   const config = getAIProviderConfig();
@@ -43,7 +54,7 @@ export function getAIAnalysisConfig(): AIAnalysisConfig {
   const logComparisons = process.env.AI_LOG_COMPARISONS === 'true';
   
   return {
-    primaryProvider: config.enabled ? 'google-vision' : 'mock',
+    primaryProvider: config.provider,
     fallbackProvider: 'mock',
     enableDualMode: dualModeEnabled,
     logComparisons: logComparisons || dualModeEnabled, // Auto-enable logging if dual mode is on
@@ -53,6 +64,7 @@ export function getAIAnalysisConfig(): AIAnalysisConfig {
 /**
  * Determine which AI provider to use for a specific organization
  * Supports percentage-based gradual rollout and organization-specific overrides
+ * Now includes AWS Rekognition as an alternative provider
  */
 export function selectAIProvider(organizationId: string): AIProvider {
   const config = getAIProviderConfig();
@@ -67,14 +79,15 @@ export function selectAIProvider(organizationId: string): AIProvider {
     }
   }
   
-  // If Google Vision is disabled, use mock
+  // If no AI providers are enabled, use mock
   if (!config.enabled) {
     return 'mock';
   }
   
-  // If rollout percentage is 100%, use Google Vision for everyone
+  // If rollout percentage is 100%, use the configured primary provider
   if (config.rolloutPercentage === 100) {
-    return 'google-vision';
+    console.log(`[AI Config] Using primary provider for org ${organizationId}: ${config.provider}`);
+    return config.provider;
   }
   
   // If rollout percentage is 0%, use mock for everyone
@@ -88,8 +101,8 @@ export function selectAIProvider(organizationId: string): AIProvider {
   const percentage = hash % 100;
   
   if (percentage < config.rolloutPercentage) {
-    console.log(`[AI Config] Org ${organizationId} selected for Google Vision (${percentage}% < ${config.rolloutPercentage}%)`);
-    return 'google-vision';
+    console.log(`[AI Config] Org ${organizationId} selected for ${config.provider} (${percentage}% < ${config.rolloutPercentage}%)`);
+    return config.provider;
   } else {
     console.log(`[AI Config] Org ${organizationId} using mock AI (${percentage}% >= ${config.rolloutPercentage}%)`);
     return 'mock';
@@ -146,12 +159,15 @@ export function shouldLogComparisons(): boolean {
 
 /**
  * Log comparison between two AI analysis results
+ * Now supports comparison between any two providers
  */
 export function logAIComparison(
   itemId: string,
   organizationId: string,
-  googleVisionResult: any,
-  mockResult: any
+  provider1Result: any,
+  provider2Result: any,
+  provider1Name: string = 'Provider 1',
+  provider2Name: string = 'Provider 2'
 ): void {
   if (!shouldLogComparisons()) {
     return;
@@ -161,26 +177,26 @@ export function logAIComparison(
   console.log(`[AI Comparison] Item ${itemId} | Org ${organizationId}`);
   console.log('-'.repeat(80));
   
-  console.log('Google Vision AI Results:');
-  console.log(`  Confidence: ${googleVisionResult.confidenceScore}%`);
-  console.log(`  Fraud Risk: ${googleVisionResult.fraudRiskLevel}`);
-  console.log(`  Processing Time: ${googleVisionResult.processingTime}ms`);
-  console.log(`  Authenticity Markers: ${googleVisionResult.authenticityMarkers.length}`);
-  console.log(`  Counterfeit Indicators: ${googleVisionResult.counterfeitIndicators.length}`);
+  console.log(`${provider1Name} Results:`);
+  console.log(`  Confidence: ${provider1Result.confidenceScore}%`);
+  console.log(`  Fraud Risk: ${provider1Result.fraudRiskLevel}`);
+  console.log(`  Processing Time: ${provider1Result.processingTime}ms`);
+  console.log(`  Authenticity Markers: ${provider1Result.authenticityMarkers.length}`);
+  console.log(`  Counterfeit Indicators: ${provider1Result.counterfeitIndicators.length}`);
   
   console.log('-'.repeat(80));
-  console.log('Mock AI Results:');
-  console.log(`  Confidence: ${mockResult.confidenceScore}%`);
-  console.log(`  Fraud Risk: ${mockResult.fraudRiskLevel}`);
-  console.log(`  Processing Time: ${mockResult.processingTime}ms`);
-  console.log(`  Authenticity Markers: ${mockResult.authenticityMarkers.length}`);
-  console.log(`  Counterfeit Indicators: ${mockResult.counterfeitIndicators.length}`);
+  console.log(`${provider2Name} Results:`);
+  console.log(`  Confidence: ${provider2Result.confidenceScore}%`);
+  console.log(`  Fraud Risk: ${provider2Result.fraudRiskLevel}`);
+  console.log(`  Processing Time: ${provider2Result.processingTime}ms`);
+  console.log(`  Authenticity Markers: ${provider2Result.authenticityMarkers.length}`);
+  console.log(`  Counterfeit Indicators: ${provider2Result.counterfeitIndicators.length}`);
   
   console.log('-'.repeat(80));
   console.log('Comparison:');
-  console.log(`  Confidence Difference: ${Math.abs(googleVisionResult.confidenceScore - mockResult.confidenceScore).toFixed(1)}%`);
-  console.log(`  Risk Level Match: ${googleVisionResult.fraudRiskLevel === mockResult.fraudRiskLevel ? 'YES' : 'NO'}`);
-  console.log(`  Google Vision Faster: ${googleVisionResult.processingTime < mockResult.processingTime ? 'YES' : 'NO'}`);
+  console.log(`  Confidence Difference: ${Math.abs(provider1Result.confidenceScore - provider2Result.confidenceScore).toFixed(1)}%`);
+  console.log(`  Risk Level Match: ${provider1Result.fraudRiskLevel === provider2Result.fraudRiskLevel ? 'YES' : 'NO'}`);
+  console.log(`  ${provider1Name} Faster: ${provider1Result.processingTime < provider2Result.processingTime ? 'YES' : 'NO'}`);
   
   console.log('='.repeat(80));
 }

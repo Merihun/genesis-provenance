@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { generateMockAnalysis } from '@/lib/ai-mock';
 import { generateGoogleVisionAnalysis } from '@/lib/ai-google-vision';
+import { generateRekognitionAnalysis } from '@/lib/ai-aws-rekognition';
 import { getSignedUrlForAI } from '@/lib/s3';
 import { 
   selectAIProvider, 
@@ -216,10 +217,14 @@ async function processAnalysis(
       console.log(`[AI Analysis] Dual-mode enabled: Will run both providers for comparison`);
     }
     
-    // Fetch media assets and generate signed URLs for Vision AI
+    // Fetch media assets and generate signed URLs for CV APIs
     let imageUrls: string[] = [];
     
-    if ((selectedProvider === 'google-vision' || dualMode) && imageIds.length > 0) {
+    const needsImageUrls = selectedProvider === 'google-vision' || 
+                           selectedProvider === 'aws-rekognition' || 
+                           dualMode;
+    
+    if (needsImageUrls && imageIds.length > 0) {
       try {
         // Fetch media asset records from database
         const mediaAssets = await prisma.mediaAsset.findMany({
@@ -248,7 +253,7 @@ async function processAnalysis(
           }
         }
         
-        console.log(`[AI Analysis] Generated ${imageUrls.length} signed URL(s) for Vision AI`);
+        console.log(`[AI Analysis] Generated ${imageUrls.length} signed URL(s) for CV APIs`);
       } catch (fetchError) {
         console.error(`[AI Analysis] Error fetching media assets:`, fetchError);
       }
@@ -256,32 +261,47 @@ async function processAnalysis(
     
     // Generate analysis result using selected provider or both providers
     let result;
-    let googleVisionResult;
-    let mockResult;
+    let primaryResult;
+    let secondaryResult;
     
     if (dualMode) {
-      // Dual-mode: Run both providers in parallel
+      // Dual-mode: Run both providers in parallel for comparison
       console.log(`[AI Analysis] Running dual-mode analysis`);
       
-      const [googleResult, mockRes] = await Promise.all([
-        imageUrls.length > 0 
-          ? generateGoogleVisionAnalysis(item, imageUrls).catch(err => {
-              console.error(`[AI Analysis] Google Vision failed in dual-mode:`, err);
-              return null;
-            })
-          : Promise.resolve(null),
+      const primaryProviderPromise = selectedProvider === 'google-vision' && imageUrls.length > 0
+        ? generateGoogleVisionAnalysis(item, imageUrls).catch(err => {
+            console.error(`[AI Analysis] Google Vision failed in dual-mode:`, err);
+            return null;
+          })
+        : selectedProvider === 'aws-rekognition' && imageUrls.length > 0
+        ? generateRekognitionAnalysis(item, imageUrls).catch(err => {
+            console.error(`[AI Analysis] AWS Rekognition failed in dual-mode:`, err);
+            return null;
+          })
+        : Promise.resolve(null);
+      
+      const [primaryRes, mockRes] = await Promise.all([
+        primaryProviderPromise,
         generateMockAnalysis(item, imageIds),
       ]);
       
-      googleVisionResult = googleResult;
-      mockResult = mockRes;
+      primaryResult = primaryRes;
+      secondaryResult = mockRes;
       
-      // Use Google Vision result if available, otherwise use mock
-      result = googleVisionResult || mockResult;
+      // Use primary result if available, otherwise use mock
+      result = primaryResult || secondaryResult;
       
       // Log comparison
-      if (googleVisionResult && mockResult) {
-        logAIComparison(item.id, organizationId, googleVisionResult, mockResult);
+      if (primaryResult && secondaryResult) {
+        const primaryProviderName = getProviderName(selectedProvider);
+        logAIComparison(
+          item.id, 
+          organizationId, 
+          primaryResult, 
+          secondaryResult,
+          primaryProviderName,
+          'Mock AI'
+        );
       }
     } else if (selectedProvider === 'google-vision') {
       console.log(`[AI Analysis] Using Google Cloud Vision AI for item ${item.id}`);
@@ -290,6 +310,14 @@ async function processAnalysis(
         result = await generateMockAnalysis(item, imageIds);
       } else {
         result = await generateGoogleVisionAnalysis(item, imageUrls);
+      }
+    } else if (selectedProvider === 'aws-rekognition') {
+      console.log(`[AI Analysis] Using AWS Rekognition for item ${item.id}`);
+      if (imageUrls.length === 0) {
+        console.warn(`[AI Analysis] No valid image URLs, falling back to mock analysis`);
+        result = await generateMockAnalysis(item, imageIds);
+      } else {
+        result = await generateRekognitionAnalysis(item, imageUrls);
       }
     } else {
       console.log(`[AI Analysis] Using mock AI analysis for item ${item.id}`);

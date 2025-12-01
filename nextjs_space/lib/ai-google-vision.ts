@@ -105,6 +105,7 @@ export async function analyzeImage(
 
 /**
  * Generate comprehensive analysis from Vision AI results
+ * Now supports multi-image analysis for comprehensive assessment
  */
 export async function generateGoogleVisionAnalysis(
   item: ItemData,
@@ -118,21 +119,27 @@ export async function generateGoogleVisionAnalysis(
     }
 
     console.log(`[Google Vision AI] Analyzing item ${item.id} (${item.brand} ${item.model})`);
-    console.log(`[Google Vision AI] Processing ${imageUrls.length} image(s)`);
+    console.log(`[Google Vision AI] Processing ${imageUrls.length} image(s) with multi-image analysis`);
     
-    // Analyze the first image with Google Cloud Vision API
-    // In production, you might analyze multiple images and combine results
-    const primaryImageUrl = imageUrls[0];
-    console.log(`[Google Vision AI] Analyzing primary image: ${primaryImageUrl}`);
+    // Analyze multiple images (up to 3 for cost efficiency)
+    const imagesToAnalyze = imageUrls.slice(0, 3);
+    console.log(`[Google Vision AI] Analyzing ${imagesToAnalyze.length} images in parallel`);
     
-    let visionData: VisionAnalysisData;
+    let visionDataArray: VisionAnalysisData[];
     try {
-      visionData = await analyzeImage(primaryImageUrl);
-      console.log(`[Google Vision AI] Analysis complete:`, {
-        labels: visionData.labels.length,
-        textAnnotations: visionData.textAnnotations.length,
-        logoAnnotations: visionData.logoAnnotations.length,
-        dominantColors: visionData.imageProperties.dominantColors.length,
+      // Analyze all images in parallel
+      visionDataArray = await Promise.all(
+        imagesToAnalyze.map((imageUrl, index) => {
+          console.log(`[Google Vision AI] Analyzing image ${index + 1}/${imagesToAnalyze.length}: ${imageUrl}`);
+          return analyzeImage(imageUrl);
+        })
+      );
+      
+      console.log(`[Google Vision AI] Multi-image analysis complete:`, {
+        imagesAnalyzed: visionDataArray.length,
+        totalLabels: visionDataArray.reduce((sum, d) => sum + d.labels.length, 0),
+        totalText: visionDataArray.reduce((sum, d) => sum + d.textAnnotations.length, 0),
+        totalLogos: visionDataArray.reduce((sum, d) => sum + d.logoAnnotations.length, 0),
       });
     } catch (apiError) {
       console.error(`[Google Vision AI] API call failed:`, apiError);
@@ -146,8 +153,16 @@ export async function generateGoogleVisionAnalysis(
       };
     }
     
-    // Generate enhanced analysis using real Vision AI data
-    const analysis = await generateEnhancedAnalysisFromVisionData(item, visionData);
+    // Aggregate results from all images
+    const aggregatedVisionData = aggregateVisionResults(visionDataArray);
+    console.log(`[Google Vision AI] Aggregated results:`, {
+      uniqueLabels: aggregatedVisionData.labels.length,
+      textAnnotations: aggregatedVisionData.textAnnotations.length,
+      logoAnnotations: aggregatedVisionData.logoAnnotations.length,
+    });
+    
+    // Generate enhanced analysis using aggregated Vision AI data
+    const analysis = await generateEnhancedAnalysisFromVisionData(item, aggregatedVisionData);
     
     const processingTime = Date.now() - startTime;
     console.log(`[Google Vision AI] Total processing time: ${processingTime}ms`);
@@ -160,6 +175,75 @@ export async function generateGoogleVisionAnalysis(
     console.error('[Google Vision AI] Analysis generation error:', error);
     throw error;
   }
+}
+
+/**
+ * Aggregate results from multiple Vision AI analyses
+ * Combines data from all images to create a comprehensive assessment
+ */
+function aggregateVisionResults(
+  results: VisionAnalysisData[]
+): VisionAnalysisData {
+  if (results.length === 1) {
+    return results[0];
+  }
+
+  console.log(`[Google Vision AI] Aggregating results from ${results.length} images`);
+
+  // Merge and deduplicate labels, keeping highest score for each
+  const labelMap = new Map<string, number>();
+  results.forEach((result) => {
+    result.labels.forEach((label) => {
+      const existing = labelMap.get(label.description);
+      if (!existing || label.score > existing) {
+        labelMap.set(label.description, label.score);
+      }
+    });
+  });
+
+  const aggregatedLabels = Array.from(labelMap.entries())
+    .map(([description, score]) => ({ description, score }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 25); // Keep top 25 labels
+
+  // Merge all text annotations (deduplicate by description)
+  const textSet = new Set<string>();
+  results.forEach((result) => {
+    result.textAnnotations.forEach((text) => {
+      textSet.add(text.description);
+    });
+  });
+
+  const aggregatedText = Array.from(textSet).map((description) => ({
+    description,
+  }));
+
+  // Merge logo annotations (deduplicate, keep highest score)
+  const logoMap = new Map<string, number>();
+  results.forEach((result) => {
+    result.logoAnnotations.forEach((logo) => {
+      const existing = logoMap.get(logo.description);
+      if (!existing || logo.score > existing) {
+        logoMap.set(logo.description, logo.score);
+      }
+    });
+  });
+
+  const aggregatedLogos = Array.from(logoMap.entries())
+    .map(([description, score]) => ({ description, score }))
+    .sort((a, b) => b.score - a.score);
+
+  // Merge all dominant colors
+  const allColors = results.flatMap((r) => r.imageProperties.dominantColors);
+
+  return {
+    labels: aggregatedLabels,
+    textAnnotations: aggregatedText,
+    logoAnnotations: aggregatedLogos,
+    imageProperties: {
+      dominantColors: allColors,
+    },
+  };
 }
 
 /**
