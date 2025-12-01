@@ -839,19 +839,49 @@ export default function VaultPage() {
 
           {/* Items Grid */}
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            // Enhanced Loading State with Skeleton Cards
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, index) => (
+                <Card key={index} className="overflow-hidden animate-pulse">
+                  <div className="relative aspect-[4/3] bg-gradient-to-br from-navy-900 to-navy-800"></div>
+                  <CardContent className="p-5 space-y-3">
+                    <div className="space-y-2">
+                      <div className="h-5 bg-gradient-to-r from-navy-800 to-navy-700 rounded w-3/4"></div>
+                      <div className="h-4 bg-gradient-to-r from-navy-800 to-navy-700 rounded w-1/2"></div>
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="h-3 bg-gradient-to-r from-navy-800 to-navy-700 rounded w-20"></div>
+                      <div className="h-3 bg-gradient-to-r from-navy-800 to-navy-700 rounded w-24"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           ) : items.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center h-64 text-center">
-                <Package className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No assets found</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Try adjusting your filters or add your first asset
+            // Enhanced Empty State
+            <Card className="card-elevated border-0 overflow-hidden">
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-gold-500/10 blur-3xl rounded-full"></div>
+                  <div className="relative bg-gradient-to-br from-navy-800 to-navy-900 p-6 rounded-2xl shadow-gold">
+                    <Package className="h-16 w-16 text-gold-400" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold mb-3 text-gradient">No assets found</h3>
+                <p className="text-muted-foreground mb-6 max-w-md">
+                  {filters.searchQuery || filters.categoryId !== 'all' || filters.status !== 'all' 
+                    ? 'No assets match your current filters. Try adjusting your search criteria.'
+                    : 'Your vault is empty. Start building your luxury asset collection today.'
+                  }
                 </p>
+                {filters.searchQuery || filters.categoryId !== 'all' || filters.status !== 'all' ? (
+                  <Button variant="outline" onClick={clearFilters} className="mb-3">
+                    <XSquare className="mr-2 h-4 w-4" />
+                    Clear All Filters
+                  </Button>
+                ) : null}
                 <Link href="/dashboard/vault/add-asset">
-                  <Button>
+                  <Button className="btn-primary shadow-lg">
                     <Plus className="mr-2 h-4 w-4" />
                     Add Your First Asset
                   </Button>
@@ -859,72 +889,109 @@ export default function VaultPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            // Enhanced Items Grid
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {items.map((item: any) => (
-                <Card key={item.id} className={`overflow-hidden hover:shadow-md transition-shadow ${
-                  selectedItems.has(item.id) ? 'ring-2 ring-blue-500' : ''
-                }`}>
+                <Card 
+                  key={item.id} 
+                  className={`card-elevated group overflow-hidden border-0 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl ${
+                    selectedItems.has(item.id) 
+                      ? 'ring-2 ring-gold-500 shadow-lg shadow-gold-500/20' 
+                      : ''
+                  }`}
+                >
                   <CardContent className="p-0">
+                    {/* Image Container with Enhanced Checkbox */}
                     <div className="relative">
-                      <div className="absolute top-2 left-2 z-10">
-                        <Checkbox
-                          checked={selectedItems.has(item.id)}
-                          onCheckedChange={() => handleSelectItem(item.id)}
-                          className="bg-white border-2"
-                        />
+                      <div className="absolute top-3 left-3 z-10">
+                        <div className="bg-white/95 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border border-navy-200/20 transition-all duration-200 hover:scale-110">
+                          <Checkbox
+                            checked={selectedItems.has(item.id)}
+                            onCheckedChange={() => handleSelectItem(item.id)}
+                            className="border-2 border-navy-300 data-[state=checked]:bg-gold-500 data-[state=checked]:border-gold-500"
+                          />
+                        </div>
                       </div>
+                      
+                      {/* Status Badge Overlay */}
+                      <div className="absolute top-3 right-3 z-10">
+                        {getStatusBadge(item.status)}
+                      </div>
+                      
                       <Link href={`/dashboard/vault/${item.id}`}>
-                        <div className="relative aspect-video bg-muted">
+                        <div className="relative aspect-[4/3] bg-gradient-to-br from-navy-900 to-navy-800 overflow-hidden">
                           {item.mediaAssets && item.mediaAssets.length > 0 ? (
-                            <Image
-                              src={item.mediaAssets[0].cloudStoragePath}
-                              alt={`${item.brand || ''} ${item.model || 'Asset'}`}
-                              fill
-                              className="object-cover"
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            />
+                            <>
+                              <Image
+                                src={item.mediaAssets[0].cloudStoragePath}
+                                alt={`${item.brand || ''} ${item.model || 'Asset'}`}
+                                fill
+                                className="object-cover transition-transform duration-500 group-hover:scale-110"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                loading="lazy"
+                              />
+                              {/* Gradient Overlay on Hover */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-navy-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            </>
                           ) : (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-navy-800/50 to-navy-900/50 backdrop-blur-sm">
+                              <div className="bg-navy-800/50 p-4 rounded-full mb-2">
+                                <ImageIcon className="h-10 w-10 text-gold-400/50" />
+                              </div>
+                              <p className="text-xs text-navy-400">No Image</p>
                             </div>
                           )}
+                          
+                          {/* View Details Overlay - appears on hover */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+                            <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                              <span className="text-sm font-medium text-navy-900">View Details</span>
+                            </div>
+                          </div>
                         </div>
                       </Link>
                     </div>
+                    
+                    {/* Enhanced Card Content */}
                     <Link href={`/dashboard/vault/${item.id}`}>
-                      <div className="p-4 space-y-2">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold truncate">
-                              {item.brand || item.makeModel || 'Unnamed Asset'}
-                            </h3>
-                            {item.model && (
-                              <p className="text-sm text-muted-foreground truncate">
-                                {item.model}
-                              </p>
-                            )}
-                          </div>
-                          {getStatusBadge(item.status)}
+                      <div className="p-5 space-y-3 bg-gradient-to-br from-white to-navy-50/30">
+                        {/* Title & Model */}
+                        <div className="space-y-1">
+                          <h3 className="font-bold text-lg truncate text-navy-950 group-hover:text-gold-600 transition-colors duration-200">
+                            {item.brand || item.makeModel || 'Unnamed Asset'}
+                          </h3>
+                          {item.model && (
+                            <p className="text-sm text-navy-600 truncate font-medium">
+                              {item.model}
+                            </p>
+                          )}
                         </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span className="capitalize">{item.category?.name}</span>
+                        
+                        {/* Category & Value */}
+                        <div className="flex items-center justify-between text-sm pt-2 border-t border-navy-100">
+                          <span className="text-navy-500 font-medium capitalize flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-gold-500"></div>
+                            {item.category?.name}
+                          </span>
                           {item.estimatedValue && (
-                            <span className="font-medium text-foreground">
+                            <span className="font-bold text-navy-900 text-base">
                               ${Number(item.estimatedValue).toLocaleString()}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
+                        
+                        {/* Meta Information */}
+                        <div className="flex items-center gap-4 text-xs text-navy-500 pt-1">
                           {item._count?.mediaAssets > 0 && (
-                            <div className="flex items-center gap-1">
-                              <FileImage className="h-3 w-3" />
-                              {item._count.mediaAssets}
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-navy-100/50 rounded-full">
+                              <FileImage className="h-3.5 w-3.5 text-navy-600" />
+                              <span className="font-medium">{item._count.mediaAssets}</span>
                             </div>
                           )}
                           {item._count?.provenanceEvents > 0 && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {item._count.provenanceEvents}
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-navy-100/50 rounded-full">
+                              <Clock className="h-3.5 w-3.5 text-navy-600" />
+                              <span className="font-medium">{item._count.provenanceEvents}</span>
                             </div>
                           )}
                         </div>
