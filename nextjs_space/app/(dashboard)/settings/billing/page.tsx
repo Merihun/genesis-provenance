@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
+import { PLAN_CONFIG } from '@/lib/stripe';
 
 interface UsageData {
   plan: string;
@@ -147,6 +148,11 @@ export default function BillingPage() {
   const handleUpgrade = async () => {
     setIsUpgrading(true);
     try {
+      console.log('Starting upgrade process...', {
+        plan: selectedPlan,
+        billingCycle: selectedCycle,
+      });
+
       const response = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,23 +163,27 @@ export default function BillingPage() {
       });
 
       const data = await response.json();
+      console.log('Checkout response:', { status: response.status, data });
 
       if (response.ok && data.url) {
+        console.log('Redirecting to Stripe Checkout:', data.url);
         // Redirect to Stripe Checkout
         window.location.href = data.url;
       } else {
+        const errorMessage = data.message || data.error || 'Failed to create checkout session';
+        console.error('Checkout failed:', errorMessage, data);
         toast({
-          title: 'Error',
-          description: data.message || 'Failed to create checkout session',
+          title: 'Checkout Error',
+          description: errorMessage,
           variant: 'destructive',
         });
         setIsUpgrading(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upgrade error:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to initiate upgrade',
+        title: 'Network Error',
+        description: error.message || 'Failed to initiate upgrade. Please check your connection and try again.',
         variant: 'destructive',
       });
       setIsUpgrading(false);
@@ -563,7 +573,10 @@ export default function BillingPage() {
                           Perfect for dealerships and resellers
                         </p>
                         <p className="text-sm font-medium mt-2">
-                          {selectedCycle === 'monthly' ? '$99/month' : '$990/year (save $198)'}
+                          {selectedCycle === 'monthly' 
+                            ? `${PLAN_CONFIG.dealer.pricing.monthly.display}/month` 
+                            : `${PLAN_CONFIG.dealer.pricing.annual.display}/year (save ${PLAN_CONFIG.dealer.pricing.annual.savings})`
+                          }
                         </p>
                         <ul className="text-xs text-muted-foreground mt-2 space-y-1">
                           <li className="flex items-center gap-1">
@@ -598,7 +611,10 @@ export default function BillingPage() {
                           For large organizations with complex needs
                         </p>
                         <p className="text-sm font-medium mt-2">
-                          {selectedCycle === 'monthly' ? '$399/month' : '$3,990/year (save $798)'}
+                          {selectedCycle === 'monthly' 
+                            ? `${PLAN_CONFIG.enterprise.pricing.monthly.display}/month` 
+                            : `${PLAN_CONFIG.enterprise.pricing.annual.display}/year (save ${PLAN_CONFIG.enterprise.pricing.annual.savings})`
+                          }
                         </p>
                         <ul className="text-xs text-muted-foreground mt-2 space-y-1">
                           <li className="flex items-center gap-1">
