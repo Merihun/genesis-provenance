@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ChevronRight, ChevronLeft, Upload, X, CheckCircle2, Search } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, Upload, X, CheckCircle2, Search, Camera } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { CameraCapture } from '@/components/ui/camera-capture';
 import type { AssetCategory } from '@/lib/types';
 
 export default function AddAssetPage() {
@@ -21,6 +22,7 @@ export default function AddAssetPage() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDecodingVIN, setIsDecodingVIN] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [categories, setCategories] = useState<AssetCategory[]>([]);
   const [files, setFiles] = useState<File[]>([]);
 
@@ -152,6 +154,14 @@ export default function AddAssetPage() {
       const newFiles = Array.from(e.target.files);
       setFiles(prev => [...prev, ...newFiles]);
     }
+  };
+
+  const handleCameraCapture = (file: File) => {
+    setFiles(prev => [...prev, file]);
+    toast({
+      title: 'Photo captured',
+      description: 'Photo added successfully',
+    });
   };
 
   const removeFile = (index: number) => {
@@ -499,6 +509,19 @@ export default function AddAssetPage() {
                   className="hidden"
                   onChange={handleFileChange}
                 />
+                
+                {/* Mobile Camera Button */}
+                <div className="mt-4 sm:hidden">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCamera(true)}
+                    className="w-full"
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    Take Photo
+                  </Button>
+                </div>
               </div>
 
               {files.length > 0 && (
@@ -635,6 +658,15 @@ export default function AddAssetPage() {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Camera Capture Modal */}
+      {showCamera && (
+        <CameraCapture
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCamera(false)}
+          facingMode="environment"
+        />
+      )}
     </div>
   );
 }

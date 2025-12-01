@@ -43,6 +43,37 @@ export async function uploadFile(
  * @param expiresIn - URL expiration time in seconds (default: 1 hour)
  * @returns Signed URL for downloading the file
  */
+/**
+ * Get file URL - returns public URL for public files, signed URL for private files
+ * @param key - S3 key (cloud_storage_path) of the file
+ * @param isPublic - Whether the file is publicly accessible
+ * @param expiresIn - Expiration time for signed URLs (default: 3600 seconds)
+ */
+export async function getFileUrl(
+  key: string,
+  isPublic: boolean = false,
+  expiresIn: number = 3600
+): Promise<string> {
+  if (!bucketName) {
+    throw new Error('AWS_BUCKET_NAME is not configured');
+  }
+
+  // For public files, return direct public URL
+  if (isPublic) {
+    const region = process.env.AWS_REGION || 'us-east-1';
+    return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
+  }
+
+  // For private files, generate signed URL
+  const command = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+  });
+
+  const signedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+  return signedUrl;
+}
+
 export async function downloadFile(
   key: string,
   expiresIn: number = 3600
