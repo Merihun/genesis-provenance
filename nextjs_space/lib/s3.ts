@@ -106,3 +106,14 @@ export async function renameFile(oldKey: string, newKey: string): Promise<string
 
   return fullNewKey;
 }
+
+/**
+ * Generate a temporary signed URL for AI processing
+ * Longer expiration time (24 hours) for reliable API access
+ * @param key - S3 key (cloud_storage_path) of the file
+ * @returns Signed URL valid for 24 hours
+ */
+export async function getSignedUrlForAI(key: string): Promise<string> {
+  // Use 24-hour expiration for AI processing to handle retries and delays
+  return downloadFile(key, 86400); // 24 hours = 86400 seconds
+}

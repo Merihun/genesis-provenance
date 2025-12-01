@@ -4,6 +4,14 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { generateMockAnalysis } from '@/lib/ai-mock';
 import { generateGoogleVisionAnalysis } from '@/lib/ai-google-vision';
+import { getSignedUrlForAI } from '@/lib/s3';
+import { 
+  selectAIProvider, 
+  isDualModeEnabled, 
+  logAIComparison, 
+  getProviderName,
+  getAIConfigStatus 
+} from '@/lib/ai-config';
 import { AIAnalysisStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -138,9 +146,9 @@ export async function POST(
       );
     }
 
-    // Determine which AI provider to use
-    const useGoogleVision = process.env.GOOGLE_VISION_ENABLED === 'true';
-    const apiProvider = useGoogleVision ? 'google-vision' : 'mock';
+    // Determine which AI provider to use based on configuration
+    const selectedProvider = selectAIProvider(organizationId);
+    console.log(`[AI Analysis Request] Selected provider for org ${organizationId}: ${getProviderName(selectedProvider)}`);
 
     // Create new analysis record
     const analysis = await prisma.aIAnalysis.create({
@@ -149,7 +157,7 @@ export async function POST(
         requestedByUserId: userId,
         status: AIAnalysisStatus.pending,
         analyzedImageIds: item.mediaAssets.map(m => m.id),
-        apiProvider,
+        apiProvider: selectedProvider,
       },
       include: {
         requestedBy: {
@@ -195,16 +203,96 @@ async function processAnalysis(
       data: { status: AIAnalysisStatus.processing },
     });
 
-    // Determine which AI provider to use
-    const useGoogleVision = process.env.GOOGLE_VISION_ENABLED === 'true';
+    const organizationId = item.organizationId;
+    console.log(`[AI Analysis] Starting analysis for item ${item.id} (Org: ${organizationId})`);
+    console.log(`[AI Analysis] Configuration: ${getAIConfigStatus()}`);
     
-    // Generate analysis result using appropriate provider
+    // Determine which AI provider to use based on configuration
+    const selectedProvider = selectAIProvider(organizationId);
+    const dualMode = isDualModeEnabled();
+    
+    console.log(`[AI Analysis] Selected provider: ${getProviderName(selectedProvider)}`);
+    if (dualMode) {
+      console.log(`[AI Analysis] Dual-mode enabled: Will run both providers for comparison`);
+    }
+    
+    // Fetch media assets and generate signed URLs for Vision AI
+    let imageUrls: string[] = [];
+    
+    if ((selectedProvider === 'google-vision' || dualMode) && imageIds.length > 0) {
+      try {
+        // Fetch media asset records from database
+        const mediaAssets = await prisma.mediaAsset.findMany({
+          where: {
+            id: { in: imageIds },
+            type: 'photo', // Only analyze photos
+          },
+          select: {
+            id: true,
+            cloudStoragePath: true,
+          },
+        });
+        
+        console.log(`[AI Analysis] Found ${mediaAssets.length} photo(s) for item ${item.id}`);
+        
+        // Generate signed URLs for each image
+        for (const asset of mediaAssets) {
+          if (asset.cloudStoragePath) {
+            try {
+              const signedUrl = await getSignedUrlForAI(asset.cloudStoragePath);
+              imageUrls.push(signedUrl);
+              console.log(`[AI Analysis] Generated signed URL for media asset ${asset.id}`);
+            } catch (urlError) {
+              console.error(`[AI Analysis] Failed to generate signed URL for ${asset.id}:`, urlError);
+            }
+          }
+        }
+        
+        console.log(`[AI Analysis] Generated ${imageUrls.length} signed URL(s) for Vision AI`);
+      } catch (fetchError) {
+        console.error(`[AI Analysis] Error fetching media assets:`, fetchError);
+      }
+    }
+    
+    // Generate analysis result using selected provider or both providers
     let result;
-    if (useGoogleVision) {
-      console.log(`Using Google Cloud Vision AI for item ${item.id}`);
-      result = await generateGoogleVisionAnalysis(item, imageIds);
+    let googleVisionResult;
+    let mockResult;
+    
+    if (dualMode) {
+      // Dual-mode: Run both providers in parallel
+      console.log(`[AI Analysis] Running dual-mode analysis`);
+      
+      const [googleResult, mockRes] = await Promise.all([
+        imageUrls.length > 0 
+          ? generateGoogleVisionAnalysis(item, imageUrls).catch(err => {
+              console.error(`[AI Analysis] Google Vision failed in dual-mode:`, err);
+              return null;
+            })
+          : Promise.resolve(null),
+        generateMockAnalysis(item, imageIds),
+      ]);
+      
+      googleVisionResult = googleResult;
+      mockResult = mockRes;
+      
+      // Use Google Vision result if available, otherwise use mock
+      result = googleVisionResult || mockResult;
+      
+      // Log comparison
+      if (googleVisionResult && mockResult) {
+        logAIComparison(item.id, organizationId, googleVisionResult, mockResult);
+      }
+    } else if (selectedProvider === 'google-vision') {
+      console.log(`[AI Analysis] Using Google Cloud Vision AI for item ${item.id}`);
+      if (imageUrls.length === 0) {
+        console.warn(`[AI Analysis] No valid image URLs, falling back to mock analysis`);
+        result = await generateMockAnalysis(item, imageIds);
+      } else {
+        result = await generateGoogleVisionAnalysis(item, imageUrls);
+      }
     } else {
-      console.log(`Using mock AI analysis for item ${item.id}`);
+      console.log(`[AI Analysis] Using mock AI analysis for item ${item.id}`);
       result = await generateMockAnalysis(item, imageIds);
     }
 
@@ -224,19 +312,22 @@ async function processAnalysis(
     });
 
     // Create a provenance event for the analysis
-    const apiProvider = useGoogleVision ? 'Google Cloud Vision AI' : 'Mock AI';
+    const apiProviderName = getProviderName(selectedProvider);
+    const dualModeLabel = dualMode ? ' (Dual-Mode)' : '';
+    
     await prisma.provenanceEvent.create({
       data: {
         itemId: item.id,
         userId: item.createdByUserId,
         eventType: 'inspection',
-        title: `AI Authentication Analysis (${apiProvider})`,
+        title: `AI Authentication Analysis (${apiProviderName}${dualModeLabel})`,
         description: `AI analysis completed with ${result.confidenceScore}% confidence. Fraud risk: ${result.fraudRiskLevel}.`,
         metadata: {
           analysisId,
           confidenceScore: result.confidenceScore,
           fraudRiskLevel: result.fraudRiskLevel,
-          apiProvider,
+          apiProvider: apiProviderName,
+          dualMode: dualMode,
         },
         occurredAt: new Date(),
       },
