@@ -172,9 +172,16 @@ export async function POST(request: NextRequest) {
           upgradeRequired: true,
           limit: featureCheck.limit,
           current: featureCheck.current,
+          suggestedPlan: featureCheck.suggestedPlan,
+          usagePercentage: featureCheck.usagePercentage,
         },
         { status: 403 }
       )
+    }
+    
+    // Log warning if approaching limit (80%+)
+    if (featureCheck.approachingLimit) {
+      console.log(`[Asset Creation] Organization ${user.organizationId} approaching asset limit: ${featureCheck.usagePercentage}% used (${featureCheck.current}/${featureCheck.limit})`);
     }
 
     const body = await request.json()

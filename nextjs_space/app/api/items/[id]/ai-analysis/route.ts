@@ -130,9 +130,16 @@ export async function POST(
           upgradeRequired: true,
           limit: featureCheck.limit,
           current: featureCheck.current,
+          suggestedPlan: featureCheck.suggestedPlan,
+          usagePercentage: featureCheck.usagePercentage,
         },
         { status: 403 }
       );
+    }
+    
+    // Log warning if approaching limit (80%+)
+    if (featureCheck.approachingLimit) {
+      console.log(`[AI Analysis] Organization ${organizationId} approaching AI analysis limit: ${featureCheck.usagePercentage}% used (${featureCheck.current}/${featureCheck.limit})`);
     }
 
     // Check if there are any photos to analyze

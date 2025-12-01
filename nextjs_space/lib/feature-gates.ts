@@ -22,6 +22,9 @@ export interface FeatureAccessResult {
   remaining?: number;
   plan: SubscriptionPlan;
   upgradeRequired?: boolean;
+  approachingLimit?: boolean; // >= 80% of limit
+  suggestedPlan?: SubscriptionPlan; // Suggested upgrade plan
+  usagePercentage?: number; // Percentage of limit used
 }
 
 /**
@@ -94,6 +97,21 @@ export async function checkFeatureAccess(
   const allowed = isWithinLimit(currentUsage, limit);
   const remaining = limit === -1 ? -1 : Math.max(0, limit - currentUsage);
 
+  // Calculate usage percentage and upgrade recommendations
+  const usagePercentage = limit === -1 ? 0 : Math.round((currentUsage / limit) * 100);
+  const approachingLimit = limit !== -1 && usagePercentage >= 80;
+  
+  // Suggest upgrade plan if approaching or exceeding limits
+  let suggestedPlan: SubscriptionPlan | undefined;
+  if (approachingLimit || !allowed) {
+    if (plan === 'collector') {
+      suggestedPlan = 'dealer';
+    } else if (plan === 'dealer') {
+      suggestedPlan = 'enterprise';
+    }
+    // No upgrade suggestion for enterprise (already on top tier)
+  }
+
   return {
     allowed,
     limit,
@@ -101,6 +119,9 @@ export async function checkFeatureAccess(
     remaining,
     plan,
     upgradeRequired: !allowed && plan !== 'enterprise',
+    approachingLimit,
+    suggestedPlan,
+    usagePercentage,
   };
 }
 
