@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Package, Settings, Users, LogOut, X, BarChart3 } from 'lucide-react';
+import { Home, Package, Settings, Users, LogOut, X, BarChart3, Shield, Sparkles } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,16 +17,16 @@ export function DashboardSidebar({ userRole, isMobileMenuOpen, onCloseMobileMenu
   const pathname = usePathname();
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'My Vault', href: '/vault', icon: Package },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Team', href: '/team', icon: Users },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Dashboard', href: '/dashboard', icon: Home, badge: null },
+    { name: 'My Vault', href: '/vault', icon: Package, badge: null },
+    { name: 'Analytics', href: '/analytics', icon: BarChart3, badge: 'New' },
+    { name: 'Team', href: '/team', icon: Users, badge: null },
+    { name: 'Settings', href: '/settings', icon: Settings, badge: null },
   ];
 
   // Add admin link if user is admin
   if (userRole === 'admin') {
-    navigation.push({ name: 'Admin', href: '/admin', icon: Users });
+    navigation.push({ name: 'Admin', href: '/admin', icon: Shield, badge: null });
   }
 
   const handleSignOut = async () => {
@@ -44,7 +44,7 @@ export function DashboardSidebar({ userRole, isMobileMenuOpen, onCloseMobileMenu
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-gray-900/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
           onClick={onCloseMobileMenu}
         />
       )}
@@ -52,34 +52,36 @@ export function DashboardSidebar({ userRole, isMobileMenuOpen, onCloseMobileMenu
       {/* Sidebar */}
       <div
         className={cn(
-          'flex h-full w-64 flex-col bg-gray-900 text-white transition-transform duration-300 ease-in-out z-50',
+          'flex h-full w-64 flex-col bg-gradient-to-b from-navy-950 to-navy-900 border-r border-navy-800/50 text-white transition-transform duration-300 ease-in-out z-50',
           'lg:relative lg:translate-x-0',
           isMobileMenuOpen
-            ? 'fixed inset-y-0 left-0 translate-x-0'
+            ? 'fixed inset-y-0 left-0 translate-x-0 shadow-2xl'
             : 'fixed inset-y-0 left-0 -translate-x-full lg:translate-x-0'
         )}
       >
         {/* Logo and Close Button */}
-        <div className="flex h-16 items-center justify-between border-b border-gray-800 px-6">
+        <div className="flex h-16 items-center justify-between border-b border-navy-800/50 px-6 bg-navy-950/50">
           <Link
             href="/dashboard"
-            className="text-xl font-serif font-bold"
+            className="flex items-center gap-2 text-xl font-serif font-bold transition-colors hover:text-gold-400"
             style={{ fontFamily: 'var(--font-playfair)' }}
             onClick={handleLinkClick}
           >
-            Genesis Provenance
+            <Sparkles className="h-5 w-5 text-gold-500" />
+            <span className="hidden sm:inline">Genesis</span>
           </Link>
           {/* Close button for mobile */}
           <button
             onClick={onCloseMobileMenu}
-            className="lg:hidden text-gray-400 hover:text-white"
+            className="lg:hidden text-gray-400 hover:text-white transition-colors p-1 rounded-md hover:bg-navy-800"
+            aria-label="Close menu"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-2 px-3 py-6 overflow-y-auto scrollbar-thin">
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
@@ -89,29 +91,40 @@ export function DashboardSidebar({ userRole, isMobileMenuOpen, onCloseMobileMenu
                 href={item.href}
                 onClick={handleLinkClick}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors',
+                  'group flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
                   'min-h-[44px]', // Ensures minimum touch target size
                   isActive
-                    ? 'bg-blue-900 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white active:bg-gray-700'
+                    ? 'bg-gradient-to-r from-gold-500/20 to-gold-600/10 text-gold-400 shadow-md border border-gold-500/20'
+                    : 'text-gray-300 hover:bg-navy-800/50 hover:text-white active:bg-navy-800 hover:border hover:border-navy-700'
                 )}
               >
-                <Icon className="h-5 w-5 flex-shrink-0" />
-                {item.name}
+                <div className="flex items-center gap-3">
+                  <Icon className={cn(
+                    "h-5 w-5 flex-shrink-0 transition-transform duration-200",
+                    isActive ? "text-gold-400" : "text-gray-400 group-hover:text-gold-500",
+                    "group-hover:scale-110"
+                  )} />
+                  <span>{item.name}</span>
+                </div>
+                {item.badge && (
+                  <span className="badge-gold text-[10px] px-2 py-0.5">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
 
         {/* Sign Out */}
-        <div className="border-t border-gray-800 p-3">
+        <div className="border-t border-navy-800/50 p-3 bg-navy-950/50">
           <Button
             onClick={handleSignOut}
             variant="ghost"
-            className="w-full justify-start text-gray-300 hover:bg-gray-800 hover:text-white min-h-[44px]"
+            className="w-full justify-start text-gray-300 hover:bg-navy-800/50 hover:text-white min-h-[44px] transition-all duration-200 hover:border hover:border-navy-700 rounded-xl group"
           >
-            <LogOut className="mr-3 h-5 w-5" />
-            Sign Out
+            <LogOut className="mr-3 h-5 w-5 text-gray-400 group-hover:text-red-400 transition-colors" />
+            <span>Sign Out</span>
           </Button>
         </div>
       </div>
