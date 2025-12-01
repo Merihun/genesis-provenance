@@ -152,7 +152,18 @@ export async function POST(request: NextRequest) {
 
     const user = session.user as any
 
+    // Check for required user fields
+    if (!user.id || !user.organizationId) {
+      console.error('Missing user fields:', { id: user.id, organizationId: user.organizationId })
+      return NextResponse.json(
+        { error: 'Invalid user session. Please log out and log in again.' },
+        { status: 400 }
+      )
+    }
+
     const body = await request.json()
+    console.log('Received item creation request:', JSON.stringify(body, null, 2))
+    
     const validatedData = createItemSchema.parse(body)
 
     // Convert string prices to Decimal
@@ -167,12 +178,28 @@ export async function POST(request: NextRequest) {
     }
 
     if (validatedData.purchasePrice) {
-      itemData.purchasePrice = parseFloat(validatedData.purchasePrice)
+      const parsedPrice = parseFloat(validatedData.purchasePrice)
+      if (isNaN(parsedPrice)) {
+        return NextResponse.json(
+          { error: 'Invalid purchase price format' },
+          { status: 400 }
+        )
+      }
+      itemData.purchasePrice = parsedPrice
     }
 
     if (validatedData.estimatedValue) {
-      itemData.estimatedValue = parseFloat(validatedData.estimatedValue)
+      const parsedValue = parseFloat(validatedData.estimatedValue)
+      if (isNaN(parsedValue)) {
+        return NextResponse.json(
+          { error: 'Invalid estimated value format' },
+          { status: 400 }
+        )
+      }
+      itemData.estimatedValue = parsedValue
     }
+
+    console.log('Creating item with data:', JSON.stringify(itemData, null, 2))
 
     const item = await prisma.item.create({
       data: itemData,
@@ -195,14 +222,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ item }, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('Validation error:', error.errors)
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
         { status: 400 }
       )
     }
     console.error('Error creating item:', error)
+    // Provide more detailed error message
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to create item' },
+      { error: 'Failed to create item', details: errorMessage },
       { status: 500 }
     )
   }

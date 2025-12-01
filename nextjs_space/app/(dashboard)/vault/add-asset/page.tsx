@@ -83,7 +83,8 @@ export default function AddAssetPage() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to create item');
+        const errorData = await res.json();
+        throw new Error(errorData.error || errorData.details || 'Failed to create item');
       }
 
       const { item } = await res.json();
@@ -95,10 +96,14 @@ export default function AddAssetPage() {
           formData.append('file', file);
           formData.append('type', 'photo');
 
-          await fetch(`/api/items/${item.id}/media`, {
+          const mediaRes = await fetch(`/api/items/${item.id}/media`, {
             method: 'POST',
             body: formData,
           });
+
+          if (!mediaRes.ok) {
+            console.error('Failed to upload media file:', file.name);
+          }
         }
       }
 
@@ -110,9 +115,10 @@ export default function AddAssetPage() {
       router.push(`/vault/${item.id}`);
     } catch (error) {
       console.error('Error creating item:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to register asset. Please try again.';
       toast({
         title: 'Error',
-        description: 'Failed to register asset. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
