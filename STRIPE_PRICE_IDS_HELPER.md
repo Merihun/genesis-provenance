@@ -1,147 +1,215 @@
-# 🎯 Stripe Price IDs Collection Helper
+# ✅ Stripe Price IDs - Configuration Complete
 
-**Current Status:** Ready to create products
-
----
-
-## Quick Setup Checklist
-
-### Before You Start
-- [ ] Signed in to Stripe Dashboard
-- [ ] Switched to **Test Mode** (toggle in top-right)
-- [ ] On Products page: https://dashboard.stripe.com/test/products
+**Status:** All 6 Price IDs successfully configured
+**Date:** December 1, 2025
+**Deployment:** https://genesisprovenance.abacusai.app
 
 ---
 
-## Product 1: Genesis Provenance - Collector
+## Configured Price IDs
 
-### Product Details
-- **Name:** `Genesis Provenance - Collector`
-- **Description:** `Perfect for individual collectors managing personal luxury assets. Includes 50 assets, 1 team member, 25 AI analyses/month, 5GB storage, and 10 VIN lookups/month.`
+### Collector Plan
+- **Monthly** ($29/month): `price_1SZZgIPCcprItfJdLPoAYtM4` ✅
+- **Annual** ($290/year): `price_1SZZhaPCcprItfJdCHRROvNS` ✅
 
-### Monthly Price
-- **Amount:** `$29.00`
-- **Billing:** `Monthly`
-- **Description:** `Collector Plan - Monthly`
-- **Price ID:** `_____________________________` ← COPY HERE
+### Dealer Plan
+- **Monthly** ($99/month): `price_1SZZjJPCcprItfJdisUu1xYh` ✅
+- **Annual** ($990/year): `price_1SZZkdPCcprItfJdNGddL4D5` ✅
 
-### Annual Price
-- **Amount:** `$290.00`
-- **Billing:** `Yearly`
-- **Description:** `Collector Plan - Annual (Save $58)`
-- **Price ID:** `_____________________________` ← COPY HERE
+### Enterprise Plan
+- **Monthly** ($399/month): `price_1SZZmxPCcprItfJdxyprxcVT` ✅
+- **Annual** ($3,990/year): `price_1SZZnnPCcprItfJd0G0jjj6Z` ✅
 
 ---
 
-## Product 2: Genesis Provenance - Dealer
+## Environment Variables (.env)
 
-### Product Details
-- **Name:** `Genesis Provenance - Dealer`
-- **Description:** `For dealers and boutiques managing inventory. Includes 500 assets, 5 team members, 250 AI analyses/month, 50GB storage, 100 VIN lookups/month, and advanced analytics.`
-
-### Monthly Price
-- **Amount:** `$99.00`
-- **Billing:** `Monthly`
-- **Description:** `Dealer Plan - Monthly`
-- **Price ID:** `_____________________________` ← COPY HERE
-
-### Annual Price
-- **Amount:** `$990.00`
-- **Billing:** `Yearly`
-- **Description:** `Dealer Plan - Annual (Save $198)`
-- **Price ID:** `_____________________________` ← COPY HERE
+```bash
+STRIPE_PRICE_COLLECTOR_MONTHLY=price_1SZZgIPCcprItfJdLPoAYtM4
+STRIPE_PRICE_COLLECTOR_ANNUAL=price_1SZZhaPCcprItfJdCHRROvNS
+STRIPE_PRICE_DEALER_MONTHLY=price_1SZZjJPCcprItfJdisUu1xYh
+STRIPE_PRICE_DEALER_ANNUAL=price_1SZZkdPCcprItfJdNGddL4D5
+STRIPE_PRICE_ENTERPRISE_MONTHLY=price_1SZZmxPCcprItfJdxyprxcVT
+STRIPE_PRICE_ENTERPRISE_ANNUAL=price_1SZZnnPCcprItfJd0G0jjj6Z
+```
 
 ---
 
-## Product 3: Genesis Provenance - Enterprise
+## Verification Steps
 
-### Product Details
-- **Name:** `Genesis Provenance - Enterprise`
-- **Description:** `Custom solution for large organizations. Unlimited assets, team members, AI analyses, storage, VIN lookups, plus advanced analytics, priority support, and API access.`
+### 1. Check Billing Dashboard
+✅ Navigate to: https://genesisprovenance.abacusai.app/settings/billing
+- Should display plan information
+- Should show usage meters
+- Should list features for each plan
 
-### Monthly Price
-- **Amount:** `$399.00`
-- **Billing:** `Monthly`
-- **Description:** `Enterprise Plan - Monthly`
-- **Price ID:** `_____________________________` ← COPY HERE
+### 2. Test in Stripe Dashboard
+✅ Go to: https://dashboard.stripe.com/test/products
+- Verify all 3 products exist (Collector, Dealer, Enterprise)
+- Verify each product has 2 prices (monthly and annual)
+- Confirm Price IDs match the list above
 
-### Annual Price
-- **Amount:** `$3,990.00`
-- **Billing:** `Yearly`
-- **Description:** `Enterprise Plan - Annual (Save $798)`
-- **Price ID:** `_____________________________` ← COPY HERE
-
----
-
-## 📝 Step-by-Step Instructions
-
-### Creating Each Product
-
-1. Click **"+ Add product"** button
-2. Enter the **Product Name** (from above)
-3. Enter the **Product Description** (from above)
-4. Click **"Add product"**
-
-### Adding Prices to Each Product
-
-1. In the product page, scroll to **"Pricing"** section
-2. Click **"+ Add another price"** (or the first price if just created)
-3. Enter the **Price Amount** (e.g., `29.00`)
-4. Select **Billing Period** (Monthly or Yearly)
-5. Enter **Price Description** (e.g., "Collector Plan - Monthly")
-6. Click **"Add price"**
-7. **IMMEDIATELY COPY THE PRICE ID** (starts with `price_...`)
-8. Paste it into the corresponding field in this document
-9. Repeat for the second price (monthly/annual)
-
-### Finding Price IDs Later
-
-1. Go to the Product page
-2. Under "Pricing" section, click on the price
-3. The Price ID is displayed at the top: `price_xxxxxxxxxxxxx`
-4. Click the copy icon next to it
+### 3. Verify Plan Configuration
+✅ The `lib/stripe.ts` file now correctly maps:
+- Plan names to Price IDs
+- Plan limits and features
+- Pricing amounts
 
 ---
 
-## ✅ Verification Checklist
+## What's Working Now
 
-Before proceeding, make sure you have:
+### ✅ Completed
+1. **Stripe API Integration**
+   - Secret and publishable keys configured
+   - Stripe client initialized
+   - API version: `2025-11-17.clover`
 
-- [ ] **6 Price IDs total** (2 for each product)
-- [ ] All Price IDs start with `price_`
-- [ ] All Price IDs are from **Test Mode**
-- [ ] Monthly and Annual prices are correctly paired
+2. **Database Schema**
+   - `Subscription` model with Stripe fields
+   - `UsageLog` model for tracking
+   - `SubscriptionPlan` enum updated
 
----
+3. **Core Utilities**
+   - `/lib/stripe.ts` - Stripe operations
+   - `/lib/feature-gates.ts` - Usage tracking
 
-## 🚀 Next Step
+4. **API Routes**
+   - `/api/billing/usage` - Fetch usage data
+   - `/api/billing/subscription` - Fetch subscription
 
-Once you have all 6 Price IDs filled in above, let me know and I'll:
-1. Automatically add them to your `.env` file
-2. Test the configuration
-3. Confirm everything is working
+5. **Billing Dashboard**
+   - Read-only view of plan and usage
+   - Progress bars for limits
+   - Feature availability indicators
 
-**Just reply with:** "I have the Price IDs" and I'll handle the rest!
-
----
-
-## 🆘 Troubleshooting
-
-### Can't find Price ID?
-- Go to the product page in Stripe Dashboard
-- Click on the price under "Pricing" section
-- The Price ID is at the top of the price detail page
-
-### Need to change pricing?
-- You can't edit existing prices
-- Create a new price with the correct amount
-- Update the Price ID in `.env` (I'll help with this)
-
-### Accidentally created in Live Mode?
-- Switch to Test Mode (toggle in top-right)
-- Create the products/prices again in Test Mode
-- Use the Test Mode Price IDs
+6. **Stripe Products & Prices**
+   - All 6 Price IDs created in Stripe Dashboard
+   - Price IDs added to `.env` file
+   - Ready for checkout implementation
 
 ---
 
-**Happy Creating! 🎉**
+## Phase 5A: Complete ✅
+
+You've successfully completed Phase 5A: Foundation & Stripe Setup!
+
+### What You Have Now:
+- ✅ Full Stripe integration foundation
+- ✅ Subscription and usage tracking database schema
+- ✅ Feature gating system
+- ✅ Billing dashboard (read-only)
+- ✅ All Stripe products and prices created
+- ✅ Price IDs configured in environment variables
+
+---
+
+## Next Steps: Phase 5B
+
+### Phase 5B will add:
+1. **Stripe Checkout**
+   - Subscription checkout flow
+   - Success/cancel pages
+   - Plan upgrade/downgrade
+
+2. **Customer Portal**
+   - Payment method management
+   - Billing history
+   - Invoice downloads
+
+3. **Webhooks**
+   - `checkout.session.completed`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.payment_succeeded`
+   - `invoice.payment_failed`
+
+4. **Feature Gating Enforcement**
+   - Block actions when limits reached
+   - Show upgrade prompts
+   - Usage warnings at 75% and 90%
+
+5. **Admin Controls**
+   - View all subscriptions
+   - Manual plan changes
+   - Usage analytics
+
+---
+
+## Testing Stripe in Test Mode
+
+### Test Card Numbers
+```
+Success: 4242 4242 4242 4242
+Declined: 4000 0000 0000 0002
+3D Secure: 4000 0027 6000 3184
+
+Expiry: Any future date (e.g., 12/34)
+CVC: Any 3 digits (e.g., 123)
+ZIP: Any 5 digits (e.g., 12345)
+```
+
+### View Test Subscriptions
+- Stripe Dashboard: https://dashboard.stripe.com/test/subscriptions
+- Customers: https://dashboard.stripe.com/test/customers
+- Payments: https://dashboard.stripe.com/test/payments
+
+---
+
+## Troubleshooting
+
+### Issue: Price IDs not working
+**Solution:** Verify they're from Test Mode in Stripe Dashboard
+
+### Issue: Billing page shows errors
+**Solution:** Check `.env` file has all 6 Price IDs configured
+
+### Issue: Can't find Price IDs
+**Solution:** 
+1. Go to https://dashboard.stripe.com/test/products
+2. Click on a product
+3. Under "Pricing," click on a price
+4. Copy the Price ID (starts with `price_`)
+
+---
+
+## Important Notes
+
+⚠️ **Test Mode vs Live Mode**
+- Current configuration uses **Test Mode** Price IDs
+- For production, you'll need to:
+  1. Create products/prices in **Live Mode**
+  2. Update `.env` with Live Mode Price IDs
+  3. Switch Stripe API keys to Live Mode
+
+⚠️ **Webhook Secret**
+- The `STRIPE_WEBHOOK_SECRET` is currently a placeholder
+- This will be configured in Phase 5B when setting up webhooks
+
+⚠️ **Database Backups**
+- Always backup your database before major changes
+- Subscription data is critical for billing
+
+---
+
+## Build Status
+
+✅ **TypeScript Compilation:** 0 errors
+✅ **Next.js Build:** Successful
+✅ **Total Routes:** 54
+✅ **Deployment:** Live at https://genesisprovenance.abacusai.app
+✅ **Checkpoint Saved:** "Stripe Price IDs configured"
+
+---
+
+## Support Resources
+
+- **Stripe Documentation:** https://stripe.com/docs
+- **Stripe Test Mode:** https://stripe.com/docs/testing
+- **Stripe Webhooks Guide:** https://stripe.com/docs/webhooks
+- **Phase 5A Documentation:** `PHASE_5A_COMPLETE.md`
+- **Stripe Setup Guide:** `PHASE_5A_STRIPE_SETUP_GUIDE.md`
+
+---
+
+**🎉 Congratulations! Phase 5A is complete and ready for Phase 5B!**
