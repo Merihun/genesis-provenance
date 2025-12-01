@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { NotificationPanel } from '@/components/dashboard/notification-panel';
 
 interface DashboardTopbarProps {
   userName?: string;
@@ -56,8 +57,13 @@ export function DashboardTopbar({ userName, userEmail, organizationName, onMobil
         )}
       </div>
 
-      {/* User Dropdown */}
-      <DropdownMenu>
+      {/* Right side - Notifications and User Menu */}
+      <div className="flex items-center gap-2">
+        {/* Notification Panel */}
+        <NotificationPanel />
+
+        {/* User Dropdown */}
+        <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-2 lg:gap-3 rounded-lg p-2 hover:bg-gray-100 transition-colors min-h-[44px]">
             <div className="text-right hidden sm:block">
@@ -88,6 +94,7 @@ export function DashboardTopbar({ userName, userEmail, organizationName, onMobil
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </div>
   );
 }

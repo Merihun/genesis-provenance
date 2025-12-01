@@ -122,6 +122,36 @@ enum FraudRiskLevel {
   critical
 }
 
+// Approval status
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+// Approval priority
+enum ApprovalPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+// Notification types
+enum NotificationType {
+  comment_mention
+  comment_reply
+  approval_requested
+  approval_approved
+  approval_rejected
+  item_status_changed
+  team_member_added
+  team_member_removed
+  item_shared
+  system_alert
+}
+
 // Organizations table
 model Organization {
   id        String           @id @default(uuid())
@@ -153,12 +183,16 @@ model User {
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   // Relations
-  organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  itemsCreated     Item[]
-  provenanceEvents ProvenanceEvent[]
-  auditLogs        AuditLog[]
-  teamMemberships  TeamMember[]
-  aiAnalysesRequested AIAnalysis[]
+  organization         Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  itemsCreated         Item[]
+  provenanceEvents     ProvenanceEvent[]
+  auditLogs            AuditLog[]
+  teamMemberships      TeamMember[]
+  aiAnalysesRequested  AIAnalysis[]
+  comments             Comment[]         @relation("CommentAuthor")
+  approvalsRequested   Approval[]        @relation("ApprovalRequester")
+  approvalsToApprove   Approval[]        @relation("ApprovalApprover")
+  notifications        Notification[]
 
   @@index([email])
   @@index([organizationId])
@@ -212,13 +246,16 @@ model Item {
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
   // Relations
-  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdBy       User              @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  category        ItemCategory      @relation(fields: [categoryId], references: [id])
-  mediaAssets     MediaAsset[]
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy        User              @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  category         ItemCategory      @relation(fields: [categoryId], references: [id])
+  mediaAssets      MediaAsset[]
   provenanceEvents ProvenanceEvent[]
-  certificates    Certificate[]
-  aiAnalyses      AIAnalysis[]
+  certificates     Certificate[]
+  aiAnalyses       AIAnalysis[]
+  comments         Comment[]
+  approvals        Approval[]
+  notifications    Notification[]
 
   @@index([organizationId])
   @@index([createdByUserId])
@@ -432,4 +469,103 @@ model AIAnalysis {
   @@index([fraudRiskLevel])
   @@index([requestedAt])
   @@map("ai_analyses")
+}
+
+// Comments table (team collaboration on assets)
+model Comment {
+  id                String   @id @default(uuid())
+  itemId            String   @map("item_id")
+  userId            String   @map("user_id")
+  content           String   @db.Text
+  mentionedUserIds  String[] @map("mentioned_user_ids")  // Array of user IDs for @mentions
+  isEdited          Boolean  @default(false) @map("is_edited")
+  parentCommentId   String?  @map("parent_comment_id")   // For threaded replies
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  item              Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user              User       @relation("CommentAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  parentComment     Comment?   @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies           Comment[]  @relation("CommentReplies")
+  notifications     Notification[]
+  
+  @@index([itemId])
+  @@index([userId])
+  @@index([parentCommentId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+// Approvals table (multi-step approval workflows)
+model Approval {
+  id                String           @id @default(uuid())
+  itemId            String           @map("item_id")
+  requestedByUserId String           @map("requested_by_user_id")
+  approverUserId    String?          @map("approver_user_id")
+  
+  // Approval details
+  approvalType      String           @map("approval_type")  // e.g., "verification", "value_assessment", "authenticity_check"
+  status            ApprovalStatus   @default(pending)
+  priority          ApprovalPriority @default(medium)
+  
+  // Notes and requirements
+  requestNotes      String?          @map("request_notes") @db.Text
+  responseNotes     String?          @map("response_notes") @db.Text
+  requiredRole      TeamRole?        @map("required_role")  // Minimum role required to approve
+  
+  // Timestamps
+  requestedAt       DateTime         @default(now()) @map("requested_at")
+  respondedAt       DateTime?        @map("responded_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  dueDate           DateTime?        @map("due_date")
+  
+  // Relations
+  item              Item             @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  requestedBy       User             @relation("ApprovalRequester", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  approver          User?            @relation("ApprovalApprover", fields: [approverUserId], references: [id], onDelete: SetNull)
+  notifications     Notification[]
+  
+  @@index([itemId])
+  @@index([requestedByUserId])
+  @@index([approverUserId])
+  @@index([status])
+  @@index([priority])
+  @@index([requestedAt])
+  @@map("approvals")
+}
+
+// Notifications table (activity notifications for team members)
+model Notification {
+  id                String            @id @default(uuid())
+  userId            String            @map("user_id")
+  
+  // Notification details
+  type              NotificationType
+  title             String
+  message           String            @db.Text
+  actionUrl         String?           @map("action_url")
+  
+  // Related resources
+  relatedItemId     String?           @map("related_item_id")
+  relatedCommentId  String?           @map("related_comment_id")
+  relatedApprovalId String?           @map("related_approval_id")
+  relatedUserId     String?           @map("related_user_id")  // User who triggered the notification
+  
+  // Status
+  isRead            Boolean           @default(false) @map("is_read")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  
+  // Relations
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedItem       Item?             @relation(fields: [relatedItemId], references: [id], onDelete: Cascade)
+  relatedComment    Comment?          @relation(fields: [relatedCommentId], references: [id], onDelete: Cascade)
+  relatedApproval   Approval?         @relation(fields: [relatedApprovalId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([relatedItemId])
+  @@map("notifications")
 }

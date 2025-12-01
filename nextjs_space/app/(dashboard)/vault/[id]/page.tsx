@@ -17,6 +17,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { AIAnalysisSection } from '@/components/dashboard/ai-analysis-section';
+import { CommentSection } from '@/components/dashboard/comment-section';
+import { ApprovalWorkflow } from '@/components/dashboard/approval-workflow';
 import { 
   Loader2, 
   ChevronLeft, 
@@ -512,7 +514,7 @@ export default function ItemDetailPage() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="provenance">Provenance ({item.provenanceEvents?.length || 0})</TabsTrigger>
               <TabsTrigger value="media">Media ({item.mediaAssets?.length || 0})</TabsTrigger>
@@ -520,6 +522,8 @@ export default function ItemDetailPage() {
                 <Sparkles className="h-4 w-4 mr-2" />
                 AI Authentication
               </TabsTrigger>
+              <TabsTrigger value="comments">Comments</TabsTrigger>
+              <TabsTrigger value="approvals">Approvals</TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="space-y-6">
@@ -957,6 +961,16 @@ export default function ItemDetailPage() {
                 itemName={`${item.brand || ''} ${item.model || item.makeModel || ''}`.trim() || 'Item'}
                 categorySlug={item.category.slug}
               />
+            </TabsContent>
+
+            {/* Comments Tab */}
+            <TabsContent value="comments" className="space-y-4">
+              <CommentSection itemId={item.id} />
+            </TabsContent>
+
+            {/* Approvals Tab */}
+            <TabsContent value="approvals" className="space-y-4">
+              <ApprovalWorkflow itemId={item.id} />
             </TabsContent>
           </Tabs>
         </div>
