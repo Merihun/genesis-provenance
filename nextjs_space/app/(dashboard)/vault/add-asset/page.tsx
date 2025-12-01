@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ChevronRight, ChevronLeft, Upload, X, CheckCircle2 } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, Upload, X, CheckCircle2, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { AssetCategory } from '@/lib/types';
 
@@ -20,6 +20,7 @@ export default function AddAssetPage() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDecodingVIN, setIsDecodingVIN] = useState(false);
   const [categories, setCategories] = useState<AssetCategory[]>([]);
   const [files, setFiles] = useState<File[]>([]);
 
@@ -139,6 +140,92 @@ export default function AddAssetPage() {
 
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDecodeVIN = async () => {
+    if (!formData.vin || formData.vin.length !== 17) {
+      toast({
+        title: 'Invalid VIN',
+        description: 'Please enter a valid 17-character VIN',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsDecodingVIN(true);
+
+    try {
+      const response = await fetch('/api/vin/decode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          vin: formData.vin,
+          modelYear: formData.year || undefined 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to decode VIN');
+      }
+
+      // Auto-populate fields from VIN decode
+      const { vehicleInfo, suggestions } = data;
+
+      // Create updated form data
+      const updates: any = {};
+
+      // Populate brand if not already set
+      if (vehicleInfo.make && !formData.brand) {
+        updates.brand = vehicleInfo.make;
+      }
+
+      // Populate model if not already set
+      if (vehicleInfo.model && !formData.model) {
+        updates.model = vehicleInfo.model;
+      }
+
+      // Populate year if not already set
+      if (suggestions.year && !formData.year) {
+        updates.year = suggestions.year.toString();
+      }
+
+      // Always update makeModel with the full suggested value
+      if (suggestions.makeModel) {
+        updates.makeModel = suggestions.makeModel;
+      }
+
+      // Update form data
+      if (Object.keys(updates).length > 0) {
+        setFormData(prev => ({ ...prev, ...updates }));
+        
+        toast({
+          title: 'VIN Decoded Successfully!',
+          description: `Found: ${suggestions.makeModel || 'Vehicle information'}`,
+        });
+      } else {
+        toast({
+          title: 'VIN Decoded',
+          description: 'No additional information found to populate',
+        });
+      }
+
+      // Show luxury brand badge if detected
+      if (suggestions.isLuxuryBrand) {
+        console.log('Luxury brand detected:', vehicleInfo.make);
+      }
+
+    } catch (error) {
+      console.error('VIN decode error:', error);
+      toast({
+        title: 'VIN Decode Failed',
+        description: error instanceof Error ? error.message : 'Unable to decode VIN. Please enter details manually.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDecodingVIN(false);
+    }
   };
 
   const canProceed = () => {
@@ -271,13 +358,38 @@ export default function AddAssetPage() {
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="vin">VIN (Vehicle Identification Number)</Label>
-                    <Input
-                      id="vin"
-                      placeholder="17-character VIN"
-                      maxLength={17}
-                      value={formData.vin}
-                      onChange={(e) => handleChange('vin', e.target.value.toUpperCase())}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="vin"
+                        placeholder="17-character VIN"
+                        maxLength={17}
+                        value={formData.vin}
+                        onChange={(e) => handleChange('vin', e.target.value.toUpperCase())}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleDecodeVIN}
+                        disabled={!formData.vin || formData.vin.length !== 17 || isDecodingVIN}
+                        className="whitespace-nowrap"
+                      >
+                        {isDecodingVIN ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Decoding...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="mr-2 h-4 w-4" />
+                            Decode VIN
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Enter the VIN and click "Decode VIN" to auto-populate vehicle details
+                    </p>
                   </div>
 
                   <div className="space-y-2">
