@@ -101,44 +101,73 @@ export async function POST(request: NextRequest) {
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('Handling checkout.session.completed:', session.id);
+  console.log('Session metadata:', session.metadata);
+  console.log('Session subscription ID:', session.subscription);
 
   const organizationId = session.metadata?.organizationId;
   if (!organizationId) {
     console.error('No organizationId in checkout session metadata');
+    console.error('Available session metadata:', session.metadata);
     return;
   }
+
+  console.log('Checkout completed for organization:', organizationId);
 
   // Get the subscription from Stripe
   if (session.subscription && typeof session.subscription === 'string') {
     const stripe = getStripe()!;
+    console.log('Retrieving subscription from Stripe:', session.subscription);
     const subscription = await stripe.subscriptions.retrieve(session.subscription);
+    console.log('Retrieved subscription, processing update...');
     await handleSubscriptionUpdate(subscription);
+    console.log('Subscription update completed successfully');
+  } else {
+    console.error('No subscription found in checkout session');
+    console.error('Session object:', JSON.stringify(session, null, 2));
   }
 }
 
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   console.log('Handling subscription update:', subscription.id);
+  console.log('Subscription metadata:', subscription.metadata);
+  console.log('Subscription status:', subscription.status);
 
   const customerId = subscription.customer as string;
   const organizationId = subscription.metadata?.organizationId;
 
   if (!organizationId) {
     console.error('No organizationId in subscription metadata');
+    console.error('Available metadata:', subscription.metadata);
     return;
   }
+
+  console.log('Processing subscription for organization:', organizationId);
 
   // Get the price ID and determine the plan
   const priceId = subscription.items.data[0]?.price.id;
   if (!priceId) {
     console.error('No price ID found in subscription');
+    console.error('Subscription items:', subscription.items.data);
     return;
   }
+
+  console.log('Price ID:', priceId);
 
   const plan = getPlanFromPriceId(priceId);
   if (!plan) {
     console.error(`Unknown price ID: ${priceId}`);
+    console.error('Available price IDs:', {
+      collector_monthly: process.env.STRIPE_PRICE_COLLECTOR_MONTHLY,
+      collector_annual: process.env.STRIPE_PRICE_COLLECTOR_ANNUAL,
+      dealer_monthly: process.env.STRIPE_PRICE_DEALER_MONTHLY,
+      dealer_annual: process.env.STRIPE_PRICE_DEALER_ANNUAL,
+      enterprise_monthly: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY,
+      enterprise_annual: process.env.STRIPE_PRICE_ENTERPRISE_ANNUAL,
+    });
     return;
   }
+
+  console.log('Determined plan:', plan);
 
   // Determine subscription status
   let status: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'incomplete';
@@ -181,6 +210,8 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     update: {
       plan,
       status,
+      stripeCustomerId: customerId, // Ensure Stripe customer ID is updated
+      stripeSubscriptionId: subscription.id, // Ensure Stripe subscription ID is updated
       stripePriceId: priceId,
       currentPeriodStart: new Date(subscriptionData.current_period_start * 1000),
       currentPeriodEnd: new Date(subscriptionData.current_period_end * 1000),

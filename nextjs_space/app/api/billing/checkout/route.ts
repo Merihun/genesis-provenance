@@ -149,14 +149,14 @@ export async function POST(request: Request) {
         plan,
         billingCycle,
       },
-      // If they have an existing subscription, allow them to switch
-      ...(existingSubscription?.stripeSubscriptionId && {
-        subscription_data: {
-          metadata: {
-            organizationId: organization.id,
-          },
+      // ALWAYS add subscription metadata so webhook can identify the organization
+      subscription_data: {
+        metadata: {
+          organizationId: organization.id,
+          plan,
+          billingCycle,
         },
-      }),
+      },
     });
 
     console.log('[Checkout] Checkout session created successfully:', {
