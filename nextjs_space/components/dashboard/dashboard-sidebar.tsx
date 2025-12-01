@@ -52,7 +52,7 @@ export function DashboardSidebar({ userRole, isMobileMenuOpen, onCloseMobileMenu
       {/* Sidebar */}
       <div
         className={cn(
-          'flex h-full w-64 flex-col bg-gradient-to-b from-navy-950 to-navy-900 border-r border-navy-800/50 text-white transition-transform duration-300 ease-in-out z-50',
+          'flex h-full w-64 flex-col bg-gradient-to-b from-slate-900 to-slate-800 border-r border-slate-700/50 text-white transition-transform duration-300 ease-in-out z-50',
           'lg:relative lg:translate-x-0',
           isMobileMenuOpen
             ? 'fixed inset-y-0 left-0 translate-x-0 shadow-2xl'
@@ -60,20 +60,20 @@ export function DashboardSidebar({ userRole, isMobileMenuOpen, onCloseMobileMenu
         )}
       >
         {/* Logo and Close Button */}
-        <div className="flex h-16 items-center justify-between border-b border-navy-800/50 px-6 bg-navy-950/50">
+        <div className="flex h-16 items-center justify-between border-b border-slate-700/50 px-6 bg-slate-900/80">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 text-xl font-serif font-bold transition-colors hover:text-gold-400"
+            className="flex items-center gap-2 text-xl font-serif font-bold text-white transition-colors hover:text-yellow-400"
             style={{ fontFamily: 'var(--font-playfair)' }}
             onClick={handleLinkClick}
           >
-            <Sparkles className="h-5 w-5 text-gold-500" />
+            <Sparkles className="h-5 w-5 text-yellow-500" />
             <span className="hidden sm:inline">Genesis</span>
           </Link>
           {/* Close button for mobile */}
           <button
             onClick={onCloseMobileMenu}
-            className="lg:hidden text-gray-400 hover:text-white transition-colors p-1 rounded-md hover:bg-navy-800"
+            className="lg:hidden text-gray-300 hover:text-white transition-colors p-1 rounded-md hover:bg-slate-700/50"
             aria-label="Close menu"
           >
             <X className="h-6 w-6" />
@@ -94,14 +94,14 @@ export function DashboardSidebar({ userRole, isMobileMenuOpen, onCloseMobileMenu
                   'group flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
                   'min-h-[44px]', // Ensures minimum touch target size
                   isActive
-                    ? 'bg-gradient-to-r from-gold-500/20 to-gold-600/10 text-gold-400 shadow-md border border-gold-500/20'
-                    : 'text-gray-300 hover:bg-navy-800/50 hover:text-white active:bg-navy-800 hover:border hover:border-navy-700'
+                    ? 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/10 text-yellow-400 shadow-md border border-yellow-500/30'
+                    : 'text-gray-100 hover:bg-slate-700/50 hover:text-white active:bg-slate-700 hover:border hover:border-slate-600'
                 )}
               >
                 <div className="flex items-center gap-3">
                   <Icon className={cn(
                     "h-5 w-5 flex-shrink-0 transition-transform duration-200",
-                    isActive ? "text-gold-400" : "text-gray-400 group-hover:text-gold-500",
+                    isActive ? "text-yellow-400" : "text-gray-300 group-hover:text-yellow-500",
                     "group-hover:scale-110"
                   )} />
                   <span>{item.name}</span>
@@ -117,13 +117,13 @@ export function DashboardSidebar({ userRole, isMobileMenuOpen, onCloseMobileMenu
         </nav>
 
         {/* Sign Out */}
-        <div className="border-t border-navy-800/50 p-3 bg-navy-950/50">
+        <div className="border-t border-slate-700/50 p-3 bg-slate-900/80">
           <Button
             onClick={handleSignOut}
             variant="ghost"
-            className="w-full justify-start text-gray-300 hover:bg-navy-800/50 hover:text-white min-h-[44px] transition-all duration-200 hover:border hover:border-navy-700 rounded-xl group"
+            className="w-full justify-start text-gray-100 hover:bg-slate-700/50 hover:text-white min-h-[44px] transition-all duration-200 hover:border hover:border-slate-600 rounded-xl group"
           >
-            <LogOut className="mr-3 h-5 w-5 text-gray-400 group-hover:text-red-400 transition-colors" />
+            <LogOut className="mr-3 h-5 w-5 text-gray-300 group-hover:text-red-400 transition-colors" />
             <span>Sign Out</span>
           </Button>
         </div>
