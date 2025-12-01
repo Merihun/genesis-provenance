@@ -166,6 +166,7 @@ model Organization {
   usageLogs     UsageLog[]
   teamMembers   TeamMember[]
   teamInvites   TeamInvite[]
+  savedSearches SavedSearch[]
 
   @@map("organizations")
 }
@@ -193,6 +194,7 @@ model User {
   approvalsRequested   Approval[]        @relation("ApprovalRequester")
   approvalsToApprove   Approval[]        @relation("ApprovalApprover")
   notifications        Notification[]
+  savedSearches        SavedSearch[]
 
   @@index([email])
   @@index([organizationId])
@@ -608,4 +610,31 @@ model Notification {
   @@index([createdAt])
   @@index([relatedItemId])
   @@map("notifications")
+}
+
+// Saved searches table (for user-defined search filters)
+model SavedSearch {
+  id             String       @id @default(uuid())
+  name           String
+  description    String?
+  userId         String       @map("user_id")
+  organizationId String       @map("organization_id")
+  
+  // Search criteria stored as JSON
+  filters        Json
+  
+  // Settings
+  isDefault      Boolean      @default(false) @map("is_default")
+  
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([organizationId])
+  @@index([isDefault])
+  @@map("saved_searches")
 }

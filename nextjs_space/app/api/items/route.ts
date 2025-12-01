@@ -25,7 +25,7 @@ const createItemSchema = z.object({
   notes: z.string().optional(),
 })
 
-// GET /api/items - List all items with optional filtering
+// GET /api/items - List all items with advanced filtering
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -40,33 +40,118 @@ export async function GET(request: NextRequest) {
     const user = session.user as any
 
     const { searchParams } = new URL(request.url)
+    
+    // Basic filters
     const categoryId = searchParams.get('categoryId')
+    const categories = searchParams.get('categories') // Comma-separated list
     const status = searchParams.get('status')
+    const statuses = searchParams.get('statuses') // Comma-separated list
     const searchQuery = searchParams.get('search')
+    
+    // Date range filters
+    const purchaseDateFrom = searchParams.get('purchaseDateFrom')
+    const purchaseDateTo = searchParams.get('purchaseDateTo')
+    const createdAtFrom = searchParams.get('createdAtFrom')
+    const createdAtTo = searchParams.get('createdAtTo')
+    
+    // Value range filters
+    const minPurchasePrice = searchParams.get('minPurchasePrice')
+    const maxPurchasePrice = searchParams.get('maxPurchasePrice')
+    const minEstimatedValue = searchParams.get('minEstimatedValue')
+    const maxEstimatedValue = searchParams.get('maxEstimatedValue')
+    
+    // Sorting
     const sortBy = searchParams.get('sortBy') || 'date'
     const sortOrder = searchParams.get('sortOrder') || 'desc'
 
     // Build where clause
     const where: any = {
       organizationId: user.organizationId,
+      AND: [],
     }
 
-    if (categoryId) {
+    // Category filtering (single or multiple)
+    if (categories) {
+      const categoryList = categories.split(',').filter(Boolean)
+      if (categoryList.length > 0) {
+        where.categoryId = { in: categoryList }
+      }
+    } else if (categoryId) {
       where.categoryId = categoryId
     }
 
-    if (status) {
+    // Status filtering (single or multiple)
+    if (statuses) {
+      const statusList = statuses.split(',').filter(Boolean)
+      if (statusList.length > 0) {
+        where.status = { in: statusList }
+      }
+    } else if (status) {
       where.status = status
     }
 
+    // Full-text search across multiple fields
     if (searchQuery) {
       where.OR = [
         { brand: { contains: searchQuery, mode: 'insensitive' } },
         { model: { contains: searchQuery, mode: 'insensitive' } },
         { makeModel: { contains: searchQuery, mode: 'insensitive' } },
         { serialNumber: { contains: searchQuery, mode: 'insensitive' } },
+        { referenceNumber: { contains: searchQuery, mode: 'insensitive' } },
         { vin: { contains: searchQuery, mode: 'insensitive' } },
+        { notes: { contains: searchQuery, mode: 'insensitive' } },
       ]
+    }
+
+    // Date range filters
+    if (purchaseDateFrom || purchaseDateTo) {
+      const purchaseDateFilter: any = {}
+      if (purchaseDateFrom) {
+        purchaseDateFilter.gte = new Date(purchaseDateFrom)
+      }
+      if (purchaseDateTo) {
+        purchaseDateFilter.lte = new Date(purchaseDateTo)
+      }
+      where.AND.push({ purchaseDate: purchaseDateFilter })
+    }
+
+    if (createdAtFrom || createdAtTo) {
+      const createdAtFilter: any = {}
+      if (createdAtFrom) {
+        createdAtFilter.gte = new Date(createdAtFrom)
+      }
+      if (createdAtTo) {
+        createdAtFilter.lte = new Date(createdAtTo)
+      }
+      where.AND.push({ createdAt: createdAtFilter })
+    }
+
+    // Value range filters
+    if (minPurchasePrice || maxPurchasePrice) {
+      const purchasePriceFilter: any = {}
+      if (minPurchasePrice) {
+        purchasePriceFilter.gte = parseFloat(minPurchasePrice)
+      }
+      if (maxPurchasePrice) {
+        purchasePriceFilter.lte = parseFloat(maxPurchasePrice)
+      }
+      where.AND.push({ purchasePrice: purchasePriceFilter })
+    }
+
+    if (minEstimatedValue || maxEstimatedValue) {
+      const estimatedValueFilter: any = {}
+      if (minEstimatedValue) {
+        estimatedValueFilter.gte = parseFloat(minEstimatedValue)
+      }
+      if (maxEstimatedValue) {
+        estimatedValueFilter.lte = parseFloat(maxEstimatedValue)
+      }
+      where.AND.push({ estimatedValue: estimatedValueFilter })
+    }
+
+    // Remove empty AND array if no date/value filters were added
+    if (where.AND.length === 0) {
+      delete where.AND
     }
 
     // Build orderBy clause
@@ -77,6 +162,8 @@ export async function GET(request: NextRequest) {
       orderBy = { estimatedValue: sortOrder }
     } else if (sortBy === 'brand') {
       orderBy = { brand: sortOrder }
+    } else if (sortBy === 'purchaseDate') {
+      orderBy = { purchaseDate: sortOrder }
     }
 
     const items = await prisma.item.findMany({
