@@ -151,6 +151,16 @@ enum NotificationType {
   system_alert
 }
 
+// Export template types
+enum ExportTemplate {
+  full_csv
+  summary_csv
+  insurance_report
+  tax_report
+  appraisal_report
+  custom
+}
+
 // Organizations table
 model Organization {
   id        String           @id @default(uuid())
@@ -160,13 +170,15 @@ model Organization {
   updatedAt DateTime         @updatedAt @map("updated_at")
 
   // Relations
-  users         User[]
-  items         Item[]
-  subscriptions Subscription[]
-  usageLogs     UsageLog[]
-  teamMembers   TeamMember[]
-  teamInvites   TeamInvite[]
-  savedSearches SavedSearch[]
+  users              User[]
+  items              Item[]
+  subscriptions      Subscription[]
+  usageLogs          UsageLog[]
+  teamMembers        TeamMember[]
+  teamInvites        TeamInvite[]
+  savedSearches      SavedSearch[]
+  portfolioSnapshots PortfolioSnapshot[]
+  exportHistory      ExportHistory[]
 
   @@map("organizations")
 }
@@ -195,6 +207,7 @@ model User {
   approvalsToApprove   Approval[]        @relation("ApprovalApprover")
   notifications        Notification[]
   savedSearches        SavedSearch[]
+  exportHistory        ExportHistory[]
 
   @@index([email])
   @@index([organizationId])
@@ -625,6 +638,10 @@ model SavedSearch {
   
   // Settings
   isDefault      Boolean      @default(false) @map("is_default")
+  isPinned       Boolean      @default(false) @map("is_pinned")      // Pin to top of sidebar
+  isShared       Boolean      @default(false) @map("is_shared")      // Shared with organization
+  icon           String?                                              // Icon name (e.g., "star", "bookmark", "heart")
+  color          String?                                              // Color code (e.g., "#d4af37")
   
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
@@ -636,5 +653,67 @@ model SavedSearch {
   @@index([userId])
   @@index([organizationId])
   @@index([isDefault])
+  @@index([isPinned])
+  @@index([isShared])
   @@map("saved_searches")
+}
+
+// Portfolio snapshots table (for historical tracking)
+model PortfolioSnapshot {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  
+  // Snapshot data
+  totalValue     Decimal  @map("total_value") @db.Decimal(12, 2)
+  totalItems     Int      @map("total_items")
+  verifiedItems  Int      @map("verified_items")
+  pendingItems   Int      @map("pending_items")
+  
+  // Value breakdown by category (JSON)
+  categoryBreakdown Json  @map("category_breakdown")
+  
+  // Value breakdown by status (JSON)
+  statusBreakdown   Json  @map("status_breakdown")
+  
+  // Metadata
+  snapshotDate   DateTime @map("snapshot_date")
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  @@index([organizationId])
+  @@index([snapshotDate])
+  @@map("portfolio_snapshots")
+}
+
+// Export history table (for tracking exports)
+model ExportHistory {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  userId         String         @map("user_id")
+  
+  // Export details
+  template       ExportTemplate
+  format         String         // "csv" or "pdf"
+  filters        Json?          // Filters applied to export
+  
+  // Export metadata
+  fileName       String         @map("file_name")
+  fileSize       Int?           @map("file_size")  // in bytes
+  itemCount      Int            @map("item_count")
+  
+  // Quick re-export support
+  canReExport    Boolean        @default(true) @map("can_re_export")
+  
+  createdAt      DateTime       @default(now()) @map("created_at")
+  
+  // Relations
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([organizationId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("export_history")
 }
