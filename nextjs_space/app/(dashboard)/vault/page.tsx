@@ -63,6 +63,23 @@ export default function VaultPage() {
   const [bulkAction, setBulkAction] = useState('');
   const [bulkStatus, setBulkStatus] = useState('');
   
+  // Define initial filter state
+  const initialFilters = {
+    categoryId: 'all',
+    status: 'all',
+    searchQuery: '',
+    sortBy: 'date',
+    sortOrder: 'desc',
+    purchaseDateFrom: '',
+    purchaseDateTo: '',
+    createdAtFrom: '',
+    createdAtTo: '',
+    minPurchasePrice: '',
+    maxPurchasePrice: '',
+    minEstimatedValue: '',
+    maxEstimatedValue: '',
+  };
+  
   // Initialize filters from URL parameters
   const [filters, setFilters] = useState({
     categoryId: searchParams?.get('category') || 'all',
@@ -183,10 +200,24 @@ export default function VaultPage() {
   };
 
   const handleLoadCollection = (collection: SmartCollection) => {
-    setFilters(prev => ({
-      ...initialFilters,
-      ...collection.filters,
-    }));
+    // Map collection filters to vault filter format
+    const collectionFilters = collection.filters;
+    const mappedFilters: any = { ...initialFilters };
+    
+    // Handle status filter (collections use 'statuses' array, vault uses 'status' string)
+    if (collectionFilters.statuses && Array.isArray(collectionFilters.statuses) && collectionFilters.statuses.length > 0) {
+      mappedFilters.status = collectionFilters.statuses[0];
+    }
+    
+    // Handle other filters
+    if (collectionFilters.minEstimatedValue) {
+      mappedFilters.minEstimatedValue = collectionFilters.minEstimatedValue.toString();
+    }
+    if (collectionFilters.createdAtFrom) {
+      mappedFilters.createdAtFrom = collectionFilters.createdAtFrom.split('T')[0];
+    }
+    
+    setFilters(mappedFilters);
     toast({
       title: 'Collection loaded',
       description: `Viewing "${collection.name}"`,
@@ -362,22 +393,6 @@ export default function VaultPage() {
 
   const clearFilters = () => {
     setFilters(initialFilters);
-  };
-
-  const initialFilters = {
-    categoryId: 'all',
-    status: 'all',
-    searchQuery: '',
-    sortBy: 'date',
-    sortOrder: 'desc',
-    purchaseDateFrom: '',
-    purchaseDateTo: '',
-    createdAtFrom: '',
-    createdAtTo: '',
-    minPurchasePrice: '',
-    maxPurchasePrice: '',
-    minEstimatedValue: '',
-    maxEstimatedValue: '',
   };
 
   const getStatusBadge = (status: string) => {
