@@ -13,7 +13,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ChevronRight, ChevronLeft, Upload, X, CheckCircle2, Search, Camera } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CameraCapture } from '@/components/ui/camera-capture';
+import { ImageAnalysisFeedback } from '@/components/dashboard/image-analysis-feedback';
+import { PhotoQualityIndicator } from '@/components/dashboard/photo-quality-indicator';
 import type { AssetCategory } from '@/lib/types';
+import type { ExtractedData, PhotoQuality } from '@/lib/smart-upload';
 
 export default function AddAssetPage() {
   const router = useRouter();
@@ -25,6 +28,11 @@ export default function AddAssetPage() {
   const [showCamera, setShowCamera] = useState(false);
   const [categories, setCategories] = useState<AssetCategory[]>([]);
   const [files, setFiles] = useState<File[]>([]);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<{
+    extracted: ExtractedData;
+    quality: PhotoQuality;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     categoryId: '',
@@ -149,10 +157,58 @@ export default function AddAssetPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const analyzeImage = async (file: File) => {
+    // Only analyze the first image file
+    if (!file.type.startsWith('image/')) return;
+    if (files.length > 0 && aiAnalysisResult) return; // Already analyzed
+
+    setIsAnalyzingImage(true);
+    
+    try {
+      // Convert file to buffer
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      // Call smart upload API
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('category', selectedCategory?.slug || '');
+
+      const res = await fetch('/api/smart-upload/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAiAnalysisResult({
+          extracted: data.extracted,
+          quality: data.quality,
+        });
+        
+        toast({
+          title: '✨ AI Analysis Complete',
+          description: 'Information extracted from your photo',
+        });
+      }
+    } catch (error) {
+      console.error('Error analyzing image:', error);
+      // Don't show error to user, just continue without analysis
+    } finally {
+      setIsAnalyzingImage(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
       setFiles(prev => [...prev, ...newFiles]);
+      
+      // Analyze the first image file
+      const firstImage = newFiles.find(f => f.type.startsWith('image/'));
+      if (firstImage) {
+        analyzeImage(firstImage);
+      }
     }
   };
 
@@ -162,10 +218,47 @@ export default function AddAssetPage() {
       title: 'Photo captured',
       description: 'Photo added successfully',
     });
+    
+    // Analyze captured photo
+    analyzeImage(file);
   };
 
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleConfirmAIExtraction = (data: Partial<ExtractedData>) => {
+    // Auto-fill form with AI extracted data
+    const updates: any = {};
+    
+    if (data.brand) updates.brand = data.brand;
+    if (data.model) updates.model = data.model;
+    if (data.serialNumber) updates.serialNumber = data.serialNumber;
+    if (data.referenceNumber) updates.referenceNumber = data.referenceNumber;
+    if (data.year) updates.year = String(data.year);
+    
+    setFormData(prev => ({ ...prev, ...updates }));
+    
+    toast({
+      title: 'Form Auto-Filled',
+      description: 'AI extracted information has been added to the form',
+    });
+    
+    // Move to step 2 to review the auto-filled data
+    setStep(2);
+  };
+
+  const handleEditAIField = (field: string, value: string) => {
+    // Update AI analysis result with edited value
+    if (aiAnalysisResult) {
+      setAiAnalysisResult({
+        ...aiAnalysisResult,
+        extracted: {
+          ...aiAnalysisResult.extracted,
+          [field]: value,
+        },
+      });
+    }
   };
 
   const handleDecodeVIN = async () => {
@@ -490,6 +583,27 @@ export default function AddAssetPage() {
           {/* Step 3: Upload Media */}
           {step === 3 && (
             <div className="space-y-6">
+              {/* AI Analysis Feedback */}
+              {isAnalyzingImage && (
+                <ImageAnalysisFeedback
+                  extracted={{} as ExtractedData}
+                  onConfirm={() => {}}
+                  onEdit={() => {}}
+                  loading={true}
+                />
+              )}
+              
+              {aiAnalysisResult && !isAnalyzingImage && (
+                <div className="space-y-4">
+                  <PhotoQualityIndicator quality={aiAnalysisResult.quality} />
+                  <ImageAnalysisFeedback
+                    extracted={aiAnalysisResult.extracted}
+                    onConfirm={handleConfirmAIExtraction}
+                    onEdit={handleEditAIField}
+                  />
+                </div>
+              )}
+              
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                 <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <Label htmlFor="file-upload" className="cursor-pointer">
@@ -500,6 +614,9 @@ export default function AddAssetPage() {
                 </Label>
                 <p className="text-sm text-gray-500 mt-1">
                   PNG, JPG, PDF up to 10MB
+                </p>
+                <p className="text-xs text-blue-600 mt-1 font-medium">
+                  ✨ AI will automatically extract information from your first photo
                 </p>
                 <Input
                   id="file-upload"
