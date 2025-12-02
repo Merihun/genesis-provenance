@@ -367,12 +367,12 @@ export default function BulkImportPage() {
           {/* Category Selection */}
           <div>
             <Label htmlFor="category">Default Category (Optional)</Label>
-            <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+            <Select value={selectedCategoryId || 'none'} onValueChange={(value) => setSelectedCategoryId(value === 'none' ? '' : value)}>
               <SelectTrigger id="category" className="mt-1">
                 <SelectValue placeholder="Select a category (or leave blank)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No default category</SelectItem>
+                <SelectItem value="none">No default category</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     {cat.name}
@@ -450,11 +450,11 @@ export default function BulkImportPage() {
                   </p>
                 </div>
                 <Select
-                  value={columnMapping[header] || ''}
+                  value={columnMapping[header] || 'ignore'}
                   onValueChange={(value) =>
                     setColumnMapping((prev) => ({
                       ...prev,
-                      [header]: value || null,
+                      [header]: value === 'ignore' ? null : value,
                     }))
                   }
                 >
@@ -462,7 +462,7 @@ export default function BulkImportPage() {
                     <SelectValue placeholder="Ignore column" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Ignore column</SelectItem>
+                    <SelectItem value="ignore">Ignore column</SelectItem>
                     <SelectItem value="brand">Brand</SelectItem>
                     <SelectItem value="model">Model</SelectItem>
                     <SelectItem value="year">Year</SelectItem>
