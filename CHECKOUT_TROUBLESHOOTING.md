@@ -179,7 +179,7 @@ If deployed on Vercel:
 
 **Solution:**
 ```bash
-STRIPE_SECRET_KEY=sk_test_51SZYvTPCcprItfJdCc9Uw37cjvNMfclIgxEzIC7YrPKkNGZinqtbSEBmhAPSmulKRWGpnQr0vZrYaGxfoWSztaWp009uR47R6a
+STRIPE_SECRET_KEY=sk_test_YOUR_STRIPE_SECRET_KEY_HERE
 ```
 
 ### Error 2: "Price not found for this plan"
