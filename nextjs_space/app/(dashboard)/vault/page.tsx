@@ -426,7 +426,7 @@ export default function VaultPage() {
             Manage and track your luxury assets
           </p>
         </div>
-        <Link href="/dashboard/vault/add-asset">
+        <Link href="/vault/add-asset">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Add Asset
@@ -880,7 +880,7 @@ export default function VaultPage() {
                     Clear All Filters
                   </Button>
                 ) : null}
-                <Link href="/dashboard/vault/add-asset">
+                <Link href="/vault/add-asset">
                   <Button className="btn-primary shadow-lg">
                     <Plus className="mr-2 h-4 w-4" />
                     Add Your First Asset
@@ -918,7 +918,7 @@ export default function VaultPage() {
                         {getStatusBadge(item.status)}
                       </div>
                       
-                      <Link href={`/dashboard/vault/${item.id}`}>
+                      <Link href={`/vault/${item.id}`}>
                         <div className="relative aspect-[4/3] bg-gradient-to-br from-navy-900 to-navy-800 overflow-hidden">
                           {item.mediaAssets && item.mediaAssets.length > 0 ? (
                             <>
@@ -953,7 +953,7 @@ export default function VaultPage() {
                     </div>
                     
                     {/* Enhanced Card Content */}
-                    <Link href={`/dashboard/vault/${item.id}`}>
+                    <Link href={`/vault/${item.id}`}>
                       <div className="p-5 space-y-3 bg-gradient-to-br from-white to-navy-50/30">
                         {/* Title & Model */}
                         <div className="space-y-1">
