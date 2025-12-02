@@ -1,0 +1,141 @@
+# GENESIS PROVENANCE - CUSTOM DOMAIN UPDATE CHECKLIST
+================================================================
+
+Primary Domain: https://app.genesisprovenance.com
+Old Domain: https://genesisprovenance.abacusai.app (DEPRECATED)
+
+================================================================
+CRITICAL - DO THESE FIRST
+================================================================
+
+1. UPDATE .ENV FILE
+   Location: /home/ubuntu/genesis_provenance/nextjs_space/.env
+   Change: NEXTAUTH_URL=https://genesisprovenance.abacusai.app
+   To: NEXTAUTH_URL=https://app.genesisprovenance.com
+   
+   Command:
+   cd /home/ubuntu/genesis_provenance/nextjs_space
+   nano .env
+   # Update NEXTAUTH_URL, save and exit
+
+2. UPDATE STRIPE WEBHOOK
+   Go to: https://dashboard.stripe.com/webhooks
+   Change endpoint from:
+     https://genesisprovenance.abacusai.app/api/billing/webhook
+   To:
+     https://app.genesisprovenance.com/api/billing/webhook
+
+3. TEST CRITICAL FLOWS
+   - Login: https://app.genesisprovenance.com/auth/login
+   - Dashboard: https://app.genesisprovenance.com/dashboard
+   - Billing: https://app.genesisprovenance.com/settings/billing
+   - Asset Registration: https://app.genesisprovenance.com/vault/add-asset
+
+================================================================
+MARKETING & BRANDING UPDATES
+================================================================
+
+4. SOCIAL MEDIA PROFILES
+   [ ] LinkedIn - Update website to app.genesisprovenance.com
+   [ ] Twitter/X - Update bio link
+   [ ] Instagram - Update bio link
+   [ ] Facebook - Update business page website
+
+5. MARKETING MATERIALS
+   [ ] Email signatures - Update domain
+   [ ] Business cards - Update domain (if printed)
+   [ ] Pitch decks - Update all slides
+   [ ] Grant applications - Update URLs
+
+6. DOCUMENTATION
+   [ ] README files - Search and replace old domain
+   [ ] Setup guides - Update installation URLs
+   [ ] API documentation - Update endpoint examples
+
+================================================================
+THIRD-PARTY SERVICES
+================================================================
+
+7. EMAIL SERVICES
+   [ ] Resend - Update email template links (if hardcoded)
+   [ ] Check team invitation emails point to new domain
+
+8. OAUTH PROVIDERS (if configured)
+   [ ] Google OAuth - Update redirect URIs
+   [ ] Other OAuth - Update callback URLs
+
+================================================================
+USER COMMUNICATION
+================================================================
+
+9. NOTIFY USERS
+   Email template:
+   
+   Subject: Genesis Provenance - New Domain Update
+   
+   Hi [Name],
+   
+   We've upgraded to our custom domain! You can now access
+   Genesis Provenance at:
+   
+   https://app.genesisprovenance.com
+   
+   Your login credentials remain the same. Simply use the
+   new URL to access your vault.
+   
+   Please update your bookmarks!
+   
+   Best,
+   Genesis Provenance Team
+
+================================================================
+VERIFICATION
+================================================================
+
+10. DNS CHECK
+    Test: https://dnschecker.org
+    Enter: app.genesisprovenance.com
+    Verify: All regions show correct IP
+
+11. SSL CHECK
+    Test: https://www.sslshopper.com/ssl-checker.html
+    Enter: app.genesisprovenance.com
+    Verify: Valid certificate, no warnings
+
+12. FUNCTIONAL TESTS
+    [ ] Login/logout works
+    [ ] Stripe checkout completes
+    [ ] Email invitations sent with correct links
+    [ ] PDF certificates have correct QR code URLs
+    [ ] Public asset sharing works: /asset/[id]
+
+================================================================
+FUTURE CONSIDERATIONS
+================================================================
+
+13. ROOT DOMAIN LANDING PAGE
+    Consider creating marketing site at: https://genesisprovenance.com
+    With "Launch App" button pointing to: https://app.genesisprovenance.com
+    
+    Sections to include:
+    - Hero with CTA to sign up
+    - Features overview
+    - Pricing
+    - About/Contact
+    - Blog (future)
+
+================================================================
+SUPPORT
+================================================================
+
+Abacus.AI: support@abacus.ai
+Stripe: https://dashboard.stripe.com/support
+GoDaddy: https://www.godaddy.com/help
+
+================================================================
+COMPLETION TRACKING
+================================================================
+
+Started: _____________
+Completed: _____________
+Notes: ________________________________________________
