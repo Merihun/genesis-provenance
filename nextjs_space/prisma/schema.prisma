@@ -161,6 +161,14 @@ enum ExportTemplate {
   custom
 }
 
+enum BulkImportStatus {
+  pending
+  processing
+  completed
+  failed
+  cancelled
+}
+
 // Organizations table
 model Organization {
   id        String           @id @default(uuid())
@@ -179,6 +187,7 @@ model Organization {
   savedSearches      SavedSearch[]
   portfolioSnapshots PortfolioSnapshot[]
   exportHistory      ExportHistory[]
+  bulkImports        BulkImport[]
 
   @@map("organizations")
 }
@@ -208,6 +217,7 @@ model User {
   notifications        Notification[]
   savedSearches        SavedSearch[]
   exportHistory        ExportHistory[]
+  bulkImports          BulkImport[]
 
   @@index([email])
   @@index([organizationId])
@@ -223,7 +233,8 @@ model ItemCategory {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  items Item[]
+  items       Item[]
+  bulkImports BulkImport[]
 
   @@map("item_categories")
 }
@@ -716,4 +727,41 @@ model ExportHistory {
   @@index([userId])
   @@index([createdAt])
   @@map("export_history")
+}
+
+// Bulk import table (for dealer bulk uploads)
+model BulkImport {
+  id             String           @id @default(uuid())
+  organizationId String           @map("organization_id")
+  userId         String           @map("user_id")
+  
+  // Upload details
+  fileName       String           @map("file_name")
+  fileSize       Int?             @map("file_size")  // in bytes
+  
+  // Processing details
+  totalRows      Int              @map("total_rows")
+  successRows    Int              @default(0) @map("success_rows")
+  failedRows     Int              @default(0) @map("failed_rows")
+  status         BulkImportStatus @default(pending)
+  
+  // Configuration
+  columnMapping  Json?            @map("column_mapping")  // User-defined column mappings
+  categoryId     String?          @map("category_id")     // Optional category assignment for all items
+  errors         Json?                                    // Detailed error messages for failed rows
+  
+  // Timestamps
+  createdAt      DateTime         @default(now()) @map("created_at")
+  completedAt    DateTime?        @map("completed_at")
+  
+  // Relations
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category       ItemCategory?    @relation(fields: [categoryId], references: [id])
+  
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("bulk_imports")
 }

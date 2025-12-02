@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   Loader2, Plus, Search, Filter, Package, FileImage, Clock, ImageIcon,
   ChevronDown, ChevronUp, Save, Star, Trash2, CheckSquare, XSquare,
-  TrendingUp, Calendar, CheckCircle2, AlertTriangle, Sparkles, FolderOpen
+  TrendingUp, Calendar, CheckCircle2, AlertTriangle, Sparkles, FolderOpen, Upload
 } from 'lucide-react';
 import type { AssetCategory, AssetWithDetails } from '@/lib/types';
 import { ExportDialog } from '@/components/dashboard/export-dialog';
@@ -441,12 +441,20 @@ export default function VaultPage() {
             Manage and track your luxury assets
           </p>
         </div>
-        <Link href="/vault/add-asset">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Asset
-          </Button>
-        </Link>
+        <div className="flex space-x-3">
+          <Link href="/vault/add-asset">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Asset
+            </Button>
+          </Link>
+          <Link href="/vault/bulk-import">
+            <Button variant="outline">
+              <Upload className="mr-2 h-4 w-4" />
+              Bulk Import
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
