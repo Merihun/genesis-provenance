@@ -14,12 +14,12 @@ export default function UseCasesPage() {
       icon: Shield,
       title: 'Protecting Investment Value',
       category: 'Collectors',
-      description: 'A collector purchases a vintage Rolex Daytona for $150,000. By documenting the purchase with Genesis Provenance, they create an immutable record including original box, papers, service history, and expert authentication. Years later when selling, the verified provenance increases buyer confidence and resale value.',
+      description: 'A collector purchases a 1967 Ferrari 275 GTB/4 for $3.5M at auction. By documenting the purchase with Genesis Provenance, they create an immutable record including matching numbers verification, restoration history, original documentation, and expert authentication. Years later when selling, the verified provenance increases buyer confidence and resale value by 15-25%.',
       benefits: [
-        'Maintain complete ownership history',
-        'Document service and restoration records',
-        'Increase resale value with verified authenticity',
-        'Simplify insurance claims and appraisals',
+        'Maintain complete ownership history and matching numbers verification',
+        'Document service, restoration, and concours records',
+        'Increase resale value with verified authenticity and provenance',
+        'Simplify insurance claims, appraisals, and estate transfers',
       ],
     },
     {

@@ -49,7 +49,7 @@ export default function AboutPage() {
           </h2>
           <div className="space-y-6 text-lg text-gray-700 leading-relaxed">
             <p>
-              Genesis Provenance was founded to address a critical challenge in the luxury asset market: the lack of verifiable, portable provenance. Whether it's a vintage Rolex, a Hermès Birkin, or a piece of fine art, high-value assets deserve comprehensive documentation that travels with them throughout their lifecycle.
+              Genesis Provenance was founded to address a critical challenge in the luxury asset market: the lack of verifiable, portable provenance. Whether it's a vintage Rolex, a classic Ferrari, a Hermès Birkin, fine jewelry, or museum-quality art, high-value assets deserve comprehensive documentation that travels with them throughout their lifecycle.
             </p>
             <p>
               Traditional authentication methods are expensive, time-consuming, and fragmented. Collectors maintain paper documents that can be lost or forged. Dealers spend significant resources on expert authentication. Insurers and lenders struggle to verify authenticity and assess risk.

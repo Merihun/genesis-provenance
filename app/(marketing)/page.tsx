@@ -65,7 +65,7 @@ export default function HomePage() {
                 <span className="text-blue-900">Luxury Assets</span>
               </h1>
               <p className="mt-6 text-xl leading-relaxed text-gray-600 max-w-2xl">
-                Authenticate, document, and protect watches, handbags, jewelry, art, and collectibles with AI-powered analysis and blockchain-grade digital certificates.
+                Authenticate, document, and protect luxury cars, watches, handbags, jewelry, art, and collectibles with AI-powered analysis and blockchain-grade digital certificates.
               </p>
               <div className="mt-10 flex items-center gap-x-6 flex-wrap">
                 <Link href="/auth/signup">
@@ -86,8 +86,8 @@ export default function HomePage() {
             <div className="relative h-[400px] lg:h-[500px]">
               <div className="relative w-full h-full rounded-lg overflow-hidden shadow-2xl">
                 <Image
-                  src="/hero-luxury-vault.jpg"
-                  alt="Luxury watch vault showcasing high-end timepieces and provenance management"
+                  src="/luxury_lifestyle_hero.jpg"
+                  alt="Luxurious vault collection room showcasing premium watches, handbags, jewelry, and art"
                   fill
                   className="object-cover"
                   priority
