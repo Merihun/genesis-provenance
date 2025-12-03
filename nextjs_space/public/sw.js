@@ -1,9 +1,10 @@
 // Genesis Provenance Service Worker
 // Provides offline support and caching for PWA
+// Version 2 - Fixed auth request interception issue
 
-const CACHE_NAME = 'genesis-provenance-v1';
-const RUNTIME_CACHE = 'genesis-runtime';
-const IMAGE_CACHE = 'genesis-images';
+const CACHE_NAME = 'genesis-provenance-v2';
+const RUNTIME_CACHE = 'genesis-runtime-v2';
+const IMAGE_CACHE = 'genesis-images-v2';
 
 // Assets to cache on install
 const PRECACHE_ASSETS = [
@@ -57,9 +58,19 @@ self.addEventListener('fetch', (event) => {
   }
 
   // API requests - network only (no cache)
+  // IMPORTANT: Do NOT intercept auth-related API calls
   if (url.pathname.startsWith('/api/')) {
+    // Skip auth endpoints - let them fail naturally to show real errors
+    if (url.pathname.startsWith('/api/auth') || 
+        url.pathname.includes('/login') || 
+        url.pathname.includes('/signup')) {
+      return; // Don't intercept - pass through to network
+    }
+    
+    // For other API requests, try network and only return offline on actual network errors
     event.respondWith(
-      fetch(request).catch(() => {
+      fetch(request).catch((error) => {
+        console.log('[SW] API request failed:', url.pathname, error);
         return new Response(
           JSON.stringify({ error: 'Offline', offline: true }),
           {

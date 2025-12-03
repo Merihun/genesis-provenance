@@ -74,18 +74,30 @@ export default function RootLayout({
           </ThemeProvider>
         </Providers>
         
-        {/* Service Worker Registration */}
+        {/* Service Worker Registration - Version 2 with Auth Fix */}
         <Script id="sw-register" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                  .then(function(registration) {
-                    console.log('SW registered:', registration.scope);
-                  })
-                  .catch(function(error) {
-                    console.log('SW registration failed:', error);
-                  });
+                // First, unregister any existing service workers to force update
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                  for(let registration of registrations) {
+                    registration.unregister().then(function() {
+                      console.log('Old SW unregistered');
+                    });
+                  }
+                  
+                  // After unregistering, register the new service worker
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('SW v2 registered:', registration.scope);
+                      // Force immediate activation
+                      registration.update();
+                    })
+                    .catch(function(error) {
+                      console.log('SW registration failed:', error);
+                    });
+                });
               });
             }
           `}
