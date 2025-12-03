@@ -1,0 +1,404 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { prisma } from '@/lib/db'
+import { downloadFile } from '@/lib/s3'
+import { checkFeatureAccess, trackFeatureUsage } from '@/lib/feature-gates'
+import { z } from 'zod'
+
+export const dynamic = 'force-dynamic'
+
+// Validation schema for creating an item
+const createItemSchema = z.object({
+  categoryId: z.string().uuid(),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  year: z.number().int().min(1800).max(2100).optional(),
+  referenceNumber: z.string().optional(),
+  serialNumber: z.string().optional(),
+  vin: z.string().optional(),
+  makeModel: z.string().optional(),
+  matchingNumbers: z.boolean().optional(),
+  purchaseDate: z.string().optional(),
+  purchasePrice: z.string().optional(),
+  estimatedValue: z.string().optional(),
+  notes: z.string().optional(),
+})
+
+// GET /api/items - List all items with advanced filtering
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const user = session.user as any
+
+    const { searchParams } = new URL(request.url)
+    
+    // Basic filters
+    const categoryId = searchParams.get('categoryId')
+    const categories = searchParams.get('categories') // Comma-separated list
+    const status = searchParams.get('status')
+    const statuses = searchParams.get('statuses') // Comma-separated list
+    const searchQuery = searchParams.get('search')
+    
+    // Date range filters
+    const purchaseDateFrom = searchParams.get('purchaseDateFrom')
+    const purchaseDateTo = searchParams.get('purchaseDateTo')
+    const createdAtFrom = searchParams.get('createdAtFrom')
+    const createdAtTo = searchParams.get('createdAtTo')
+    
+    // Value range filters
+    const minPurchasePrice = searchParams.get('minPurchasePrice')
+    const maxPurchasePrice = searchParams.get('maxPurchasePrice')
+    const minEstimatedValue = searchParams.get('minEstimatedValue')
+    const maxEstimatedValue = searchParams.get('maxEstimatedValue')
+    
+    // Sorting
+    const sortBy = searchParams.get('sortBy') || 'date'
+    const sortOrder = searchParams.get('sortOrder') || 'desc'
+
+    // Build where clause
+    const where: any = {
+      organizationId: user.organizationId,
+      AND: [],
+    }
+
+    // Category filtering (single or multiple)
+    if (categories) {
+      const categoryList = categories.split(',').filter(Boolean)
+      if (categoryList.length > 0) {
+        where.categoryId = { in: categoryList }
+      }
+    } else if (categoryId) {
+      where.categoryId = categoryId
+    }
+
+    // Status filtering (single or multiple)
+    if (statuses) {
+      const statusList = statuses.split(',').filter(Boolean)
+      if (statusList.length > 0) {
+        where.status = { in: statusList }
+      }
+    } else if (status) {
+      where.status = status
+    }
+
+    // Full-text search across multiple fields
+    if (searchQuery) {
+      where.OR = [
+        { brand: { contains: searchQuery, mode: 'insensitive' } },
+        { model: { contains: searchQuery, mode: 'insensitive' } },
+        { makeModel: { contains: searchQuery, mode: 'insensitive' } },
+        { serialNumber: { contains: searchQuery, mode: 'insensitive' } },
+        { referenceNumber: { contains: searchQuery, mode: 'insensitive' } },
+        { vin: { contains: searchQuery, mode: 'insensitive' } },
+        { notes: { contains: searchQuery, mode: 'insensitive' } },
+      ]
+    }
+
+    // Date range filters
+    if (purchaseDateFrom || purchaseDateTo) {
+      const purchaseDateFilter: any = {}
+      if (purchaseDateFrom) {
+        purchaseDateFilter.gte = new Date(purchaseDateFrom)
+      }
+      if (purchaseDateTo) {
+        purchaseDateFilter.lte = new Date(purchaseDateTo)
+      }
+      where.AND.push({ purchaseDate: purchaseDateFilter })
+    }
+
+    if (createdAtFrom || createdAtTo) {
+      const createdAtFilter: any = {}
+      if (createdAtFrom) {
+        createdAtFilter.gte = new Date(createdAtFrom)
+      }
+      if (createdAtTo) {
+        createdAtFilter.lte = new Date(createdAtTo)
+      }
+      where.AND.push({ createdAt: createdAtFilter })
+    }
+
+    // Value range filters
+    if (minPurchasePrice || maxPurchasePrice) {
+      const purchasePriceFilter: any = {}
+      if (minPurchasePrice) {
+        purchasePriceFilter.gte = parseFloat(minPurchasePrice)
+      }
+      if (maxPurchasePrice) {
+        purchasePriceFilter.lte = parseFloat(maxPurchasePrice)
+      }
+      where.AND.push({ purchasePrice: purchasePriceFilter })
+    }
+
+    if (minEstimatedValue || maxEstimatedValue) {
+      const estimatedValueFilter: any = {}
+      if (minEstimatedValue) {
+        estimatedValueFilter.gte = parseFloat(minEstimatedValue)
+      }
+      if (maxEstimatedValue) {
+        estimatedValueFilter.lte = parseFloat(maxEstimatedValue)
+      }
+      where.AND.push({ estimatedValue: estimatedValueFilter })
+    }
+
+    // Remove empty AND array if no date/value filters were added
+    if (where.AND.length === 0) {
+      delete where.AND
+    }
+
+    // Build orderBy clause
+    let orderBy: any = {}
+    if (sortBy === 'date') {
+      orderBy = { createdAt: sortOrder }
+    } else if (sortBy === 'value') {
+      orderBy = { estimatedValue: sortOrder }
+    } else if (sortBy === 'brand') {
+      orderBy = { brand: sortOrder }
+    } else if (sortBy === 'purchaseDate') {
+      orderBy = { purchaseDate: sortOrder }
+    }
+
+    const items = await prisma.item.findMany({
+      where,
+      orderBy,
+      include: {
+        category: true,
+        mediaAssets: {
+          take: 1,
+          where: {
+            type: 'photo',
+          },
+          orderBy: {
+            uploadedAt: 'asc',
+          },
+        },
+        _count: {
+          select: {
+            mediaAssets: true,
+            provenanceEvents: true,
+          },
+        },
+      },
+    })
+
+    // Generate signed URLs for media assets
+    const itemsWithSignedUrls = await Promise.all(
+      items.map(async (item) => {
+        if (item.mediaAssets && item.mediaAssets.length > 0) {
+          const mediaAssetsWithUrls = await Promise.all(
+            item.mediaAssets.map(async (asset) => {
+              try {
+                const signedUrl = await downloadFile(asset.cloudStoragePath, 3600);
+                return {
+                  ...asset,
+                  cloudStoragePath: signedUrl, // Replace S3 key with signed URL
+                };
+              } catch (error) {
+                console.error('Error generating signed URL:', error);
+                return asset; // Return original if signing fails
+              }
+            })
+          );
+          return {
+            ...item,
+            mediaAssets: mediaAssetsWithUrls,
+          };
+        }
+        return item;
+      })
+    );
+
+    return NextResponse.json({ items: itemsWithSignedUrls })
+  } catch (error) {
+    console.error('Error fetching items:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch items' },
+      { status: 500 }
+    )
+  }
+}
+
+// POST /api/items - Create a new item
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const user = session.user as any
+
+    // Check for required user fields
+    if (!user.id || !user.organizationId) {
+      console.error('Missing user fields:', { id: user.id, organizationId: user.organizationId })
+      return NextResponse.json(
+        { error: 'Invalid user session. Please log out and log in again.' },
+        { status: 400 }
+      )
+    }
+
+    // Check feature access (usage limits)
+    const featureCheck = await checkFeatureAccess(user.organizationId, 'asset_created')
+    if (!featureCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Asset limit reached',
+          message: `You've reached your ${featureCheck.plan} plan limit of ${featureCheck.limit} assets. Please upgrade to continue.`,
+          upgradeRequired: true,
+          limit: featureCheck.limit,
+          current: featureCheck.current,
+          suggestedPlan: featureCheck.suggestedPlan,
+          usagePercentage: featureCheck.usagePercentage,
+        },
+        { status: 403 }
+      )
+    }
+    
+    // Log warning if approaching limit (80%+)
+    if (featureCheck.approachingLimit) {
+      console.log(`[Asset Creation] Organization ${user.organizationId} approaching asset limit: ${featureCheck.usagePercentage}% used (${featureCheck.current}/${featureCheck.limit})`);
+    }
+
+    const body = await request.json()
+    console.log('Received item creation request:', JSON.stringify(body, null, 2))
+    
+    // Validate request body with Zod
+    const validatedData = createItemSchema.parse(body)
+    console.log('Validated data:', JSON.stringify(validatedData, null, 2))
+
+    // Convert string prices to Decimal
+    const itemData: any = {
+      organizationId: user.organizationId,
+      createdByUserId: user.id,
+      categoryId: validatedData.categoryId,
+    }
+
+    // Add optional fields only if they have valid values
+    if (validatedData.brand) itemData.brand = validatedData.brand
+    if (validatedData.model) itemData.model = validatedData.model
+    if (validatedData.year) itemData.year = validatedData.year
+    if (validatedData.referenceNumber) itemData.referenceNumber = validatedData.referenceNumber
+    if (validatedData.serialNumber) itemData.serialNumber = validatedData.serialNumber
+    if (validatedData.vin) itemData.vin = validatedData.vin
+    if (validatedData.makeModel) itemData.makeModel = validatedData.makeModel
+    if (typeof validatedData.matchingNumbers === 'boolean') itemData.matchingNumbers = validatedData.matchingNumbers
+    if (validatedData.notes) itemData.notes = validatedData.notes
+
+    if (validatedData.purchaseDate) {
+      try {
+        itemData.purchaseDate = new Date(validatedData.purchaseDate)
+      } catch (e) {
+        return NextResponse.json(
+          { error: 'Invalid purchase date format' },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (validatedData.purchasePrice) {
+      const parsedPrice = parseFloat(validatedData.purchasePrice)
+      if (isNaN(parsedPrice) || parsedPrice < 0) {
+        return NextResponse.json(
+          { error: 'Invalid purchase price format. Must be a positive number.' },
+          { status: 400 }
+        )
+      }
+      itemData.purchasePrice = parsedPrice
+    }
+
+    if (validatedData.estimatedValue) {
+      const parsedValue = parseFloat(validatedData.estimatedValue)
+      if (isNaN(parsedValue) || parsedValue < 0) {
+        return NextResponse.json(
+          { error: 'Invalid estimated value format. Must be a positive number.' },
+          { status: 400 }
+        )
+      }
+      itemData.estimatedValue = parsedValue
+    }
+
+    console.log('Creating item with data:', JSON.stringify(itemData, null, 2))
+
+    const item = await prisma.item.create({
+      data: itemData,
+      include: {
+        category: true,
+      },
+    })
+
+    // Create initial provenance event
+    await prisma.provenanceEvent.create({
+      data: {
+        itemId: item.id,
+        userId: user.id,
+        eventType: 'registered',
+        title: 'Asset Registered',
+        description: `${item.category.name} registered in the vault`,
+      },
+    })
+
+    // Track usage for billing
+    await trackFeatureUsage({
+      organizationId: user.organizationId,
+      feature: 'asset_created',
+      count: 1,
+      metadata: {
+        itemId: item.id,
+        categoryId: item.categoryId,
+      },
+    })
+
+    return NextResponse.json({ item }, { status: 201 })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error('Validation error:', error.errors)
+      const firstError = error.errors[0]
+      const fieldName = firstError.path.join('.')
+      const errorMsg = `${fieldName}: ${firstError.message}`
+      return NextResponse.json(
+        { error: 'Validation error', details: errorMsg, validationErrors: error.errors },
+        { status: 400 }
+      )
+    }
+    
+    // Handle Prisma errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const prismaError = error as any
+      console.error('Prisma error:', prismaError)
+      
+      if (prismaError.code === 'P2002') {
+        return NextResponse.json(
+          { error: 'Duplicate entry', details: 'An item with this information already exists' },
+          { status: 409 }
+        )
+      }
+      
+      if (prismaError.code === 'P2003') {
+        return NextResponse.json(
+          { error: 'Invalid reference', details: 'The category or organization ID is invalid' },
+          { status: 400 }
+        )
+      }
+    }
+    
+    console.error('Error creating item:', error)
+    // Provide more detailed error message
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+    return NextResponse.json(
+      { error: 'Failed to create item', details: errorMessage },
+      { status: 500 }
+    )
+  }
+}

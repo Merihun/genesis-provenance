@@ -1,0 +1,767 @@
+// Genesis Provenance - Prisma Schema for Phase 1
+
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/genesis_provenance/nextjs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// User roles enum
+enum UserRole {
+  collector
+  reseller
+  partner
+  admin
+}
+
+// Organization types enum
+enum OrganizationType {
+  individual
+  reseller
+  partner
+  enterprise
+}
+
+// Item status enum
+enum ItemStatus {
+  pending
+  verified
+  flagged
+  rejected
+}
+
+// Contact submission user types
+enum ContactUserType {
+  collector
+  reseller
+  partner
+  other
+}
+
+// Contact submission status
+enum ContactStatus {
+  new
+  contacted
+  converted
+  archived
+}
+
+// Media asset types
+enum MediaAssetType {
+  photo
+  document
+  certificate
+}
+
+// Provenance event types
+enum ProvenanceEventType {
+  registered
+  reviewed
+  status_changed
+  ownership_transfer
+  certificate_issued
+  note_added
+  restoration_work
+  service_record
+  concours_event
+  appraisal
+  inspection
+}
+
+// Subscription status
+enum SubscriptionStatus {
+  active
+  cancelled
+  past_due
+  incomplete
+  trialing
+}
+
+// Subscription plan types
+enum SubscriptionPlan {
+  collector
+  dealer
+  enterprise
+}
+
+// Team member roles
+enum TeamRole {
+  owner
+  admin
+  editor
+  viewer
+}
+
+// Team invite status
+enum InviteStatus {
+  pending
+  accepted
+  declined
+  expired
+}
+
+// AI Analysis status
+enum AIAnalysisStatus {
+  pending
+  processing
+  completed
+  failed
+}
+
+// AI Analysis fraud risk level
+enum FraudRiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+// Approval status
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+// Approval priority
+enum ApprovalPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+// Notification types
+enum NotificationType {
+  comment_mention
+  comment_reply
+  approval_requested
+  approval_approved
+  approval_rejected
+  item_status_changed
+  team_member_added
+  team_member_removed
+  item_shared
+  system_alert
+}
+
+// Export template types
+enum ExportTemplate {
+  full_csv
+  summary_csv
+  insurance_report
+  tax_report
+  appraisal_report
+  custom
+}
+
+enum BulkImportStatus {
+  pending
+  processing
+  completed
+  failed
+  cancelled
+}
+
+// Organizations table
+model Organization {
+  id        String           @id @default(uuid())
+  name      String
+  type      OrganizationType @default(individual)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  users              User[]
+  items              Item[]
+  subscriptions      Subscription[]
+  usageLogs          UsageLog[]
+  teamMembers        TeamMember[]
+  teamInvites        TeamInvite[]
+  savedSearches      SavedSearch[]
+  portfolioSnapshots PortfolioSnapshot[]
+  exportHistory      ExportHistory[]
+  bulkImports        BulkImport[]
+
+  @@map("organizations")
+}
+
+// Users table
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  passwordHash   String       @map("password_hash")
+  fullName       String       @map("full_name")
+  role           UserRole     @default(collector)
+  organizationId String?      @map("organization_id")
+  emailVerified  Boolean      @default(false) @map("email_verified")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  organization         Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  itemsCreated         Item[]
+  provenanceEvents     ProvenanceEvent[]
+  auditLogs            AuditLog[]
+  teamMemberships      TeamMember[]
+  aiAnalysesRequested  AIAnalysis[]
+  comments             Comment[]         @relation("CommentAuthor")
+  approvalsRequested   Approval[]        @relation("ApprovalRequester")
+  approvalsToApprove   Approval[]        @relation("ApprovalApprover")
+  notifications        Notification[]
+  savedSearches        SavedSearch[]
+  exportHistory        ExportHistory[]
+  bulkImports          BulkImport[]
+
+  @@index([email])
+  @@index([organizationId])
+  @@map("users")
+}
+
+// Item categories table
+model ItemCategory {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  items       Item[]
+  bulkImports BulkImport[]
+
+  @@map("item_categories")
+}
+
+// Items table
+model Item {
+  id              String      @id @default(uuid())
+  organizationId  String      @map("organization_id")
+  createdByUserId String      @map("created_by_user_id")
+  categoryId      String      @map("category_id")
+  
+  // Basic details
+  brand           String?
+  model           String?
+  year            Int?
+  referenceNumber String?     @map("reference_number")
+  serialNumber    String?     @map("serial_number")
+  
+  // Luxury car specific
+  vin             String?                              // Vehicle Identification Number
+  makeModel       String?     @map("make_model")       // e.g., "Ferrari 275 GTB/4"
+  matchingNumbers Boolean?    @map("matching_numbers") // Engine/chassis match
+  
+  // Financial details
+  purchaseDate    DateTime?   @map("purchase_date")
+  purchasePrice   Decimal?    @map("purchase_price") @db.Decimal(12, 2)
+  estimatedValue  Decimal?    @map("estimated_value") @db.Decimal(12, 2)
+  
+  // Status & authentication
+  status          ItemStatus  @default(pending)
+  riskScore       Int?        @map("risk_score")
+  notes           String?     @db.Text
+  
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy        User              @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  category         ItemCategory      @relation(fields: [categoryId], references: [id])
+  mediaAssets      MediaAsset[]
+  provenanceEvents ProvenanceEvent[]
+  certificates     Certificate[]
+  aiAnalyses       AIAnalysis[]
+  comments         Comment[]
+  approvals        Approval[]
+  notifications    Notification[]
+
+  @@index([organizationId])
+  @@index([createdByUserId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([vin])
+  @@map("items")
+}
+
+// Contact submissions table (for waitlist/contact forms)
+model ContactSubmission {
+  id        String            @id @default(uuid())
+  name      String
+  email     String
+  company   String?
+  userType  ContactUserType   @map("user_type")
+  message   String            @db.Text
+  status    ContactStatus     @default(new)
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_submissions")
+}
+
+// Media assets table (photos, documents, certificates)
+model MediaAsset {
+  id                String         @id @default(uuid())
+  itemId            String         @map("item_id")
+  type              MediaAssetType
+  fileName          String         @map("file_name")
+  cloudStoragePath  String         @map("cloud_storage_path")  // S3 key
+  fileSize          Int            @map("file_size")            // in bytes
+  mimeType          String         @map("mime_type")
+  isPublic          Boolean        @default(false) @map("is_public")  // Public vs private S3 access
+  uploadedAt        DateTime       @default(now()) @map("uploaded_at")
+
+  // Relations
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([type])
+  @@map("media_assets")
+}
+
+// Provenance events table (timeline of asset history)
+model ProvenanceEvent {
+  id          String               @id @default(uuid())
+  itemId      String               @map("item_id")
+  userId      String?              @map("user_id")
+  eventType   ProvenanceEventType  @map("event_type")
+  title       String
+  description String?              @db.Text
+  metadata    Json?                                // Additional structured data
+  occurredAt  DateTime             @default(now()) @map("occurred_at")
+
+  // Relations
+  item Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([itemId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([occurredAt])
+  @@map("provenance_events")
+}
+
+// Certificates table (generated provenance certificates)
+model Certificate {
+  id              String   @id @default(uuid())
+  itemId          String   @map("item_id")
+  certificateToken String  @unique @map("certificate_token")  // For public sharing
+  htmlContent     String   @db.Text @map("html_content")
+  pdfStoragePath  String?  @map("pdf_storage_path")          // S3 key for PDF
+  generatedAt     DateTime @default(now()) @map("generated_at")
+  expiresAt       DateTime? @map("expires_at")
+  isActive        Boolean  @default(true) @map("is_active")
+
+  // Relations
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([certificateToken])
+  @@map("certificates")
+}
+
+// Subscriptions table (Stripe integration)
+model Subscription {
+  id                   String             @id @default(uuid())
+  organizationId       String             @unique @map("organization_id")
+  
+  // Stripe details
+  stripeCustomerId     String             @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?            @unique @map("stripe_subscription_id")
+  stripePriceId        String?            @map("stripe_price_id")       // Current price ID
+  
+  // Subscription state
+  plan                 SubscriptionPlan   @default(collector)
+  status               SubscriptionStatus @default(trialing)
+  
+  // Billing cycle
+  currentPeriodStart   DateTime?          @map("current_period_start")
+  currentPeriodEnd     DateTime?          @map("current_period_end")
+  trialEnd             DateTime?          @map("trial_end")
+  cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
+  canceledAt           DateTime?          @map("canceled_at")
+  
+  // Timestamps
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  usageLogs    UsageLog[]
+
+  @@index([stripeCustomerId])
+  @@index([status])
+  @@index([plan])
+  @@map("subscriptions")
+}
+
+// Usage logs table (track feature usage for billing limits)
+model UsageLog {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  subscriptionId String?  @map("subscription_id")
+  
+  // Usage tracking
+  feature        String   // e.g., 'asset_created', 'ai_analysis', 'vin_lookup', 'team_member_added'
+  count          Int      @default(1)
+  metadata       Json?    // Additional context (e.g., itemId, userId)
+  
+  // Billing period tracking
+  periodStart    DateTime @map("period_start")
+  periodEnd      DateTime @map("period_end")
+  
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  
+  @@index([organizationId, feature, createdAt])
+  @@index([subscriptionId])
+  @@index([periodStart, periodEnd])
+  @@map("usage_logs")
+}
+
+// Audit logs table (security and compliance)
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  action     String                          // e.g., "item.create", "user.login", "settings.update"
+  resource   String?                         // Resource type (item, user, org)
+  resourceId String?  @map("resource_id")   // ID of the resource
+  details    Json?                           // Additional context
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Team members table (for collaboration)
+model TeamMember {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  role           TeamRole @default(viewer)
+  addedAt        DateTime @default(now()) @map("added_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+// Team invites table (pending invitations)
+model TeamInvite {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  email          String
+  role           TeamRole     @default(viewer)
+  status         InviteStatus @default(pending)
+  inviteToken    String       @unique @map("invite_token")
+  expiresAt      DateTime     @map("expires_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([inviteToken])
+  @@index([status])
+  @@map("team_invites")
+}
+
+// AI Analysis table (authentication and fraud detection)
+model AIAnalysis {
+  id                String            @id @default(uuid())
+  itemId            String            @map("item_id")
+  requestedByUserId String            @map("requested_by_user_id")
+  
+  // Analysis status and results
+  status            AIAnalysisStatus  @default(pending)
+  confidenceScore   Int?              @map("confidence_score")  // 0-100
+  fraudRiskLevel    FraudRiskLevel?   @map("fraud_risk_level")
+  
+  // Analysis findings
+  findings          Json?             // Detailed analysis results
+  counterfeitIndicators Json?         @map("counterfeit_indicators")  // List of issues found
+  authenticityMarkers   Json?         @map("authenticity_markers")    // Positive indicators
+  
+  // Images analyzed (media asset IDs)
+  analyzedImageIds  String[]          @map("analyzed_image_ids")
+  
+  // Metadata
+  processingTime    Int?              @map("processing_time")  // milliseconds
+  apiProvider       String?           @map("api_provider")     // e.g., "google-vision", "aws-rekognition", "mock"
+  errorMessage      String?           @map("error_message")    @db.Text
+  
+  // Timestamps
+  requestedAt       DateTime          @default(now()) @map("requested_at")
+  completedAt       DateTime?         @map("completed_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  
+  // Relations
+  item              Item              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  requestedBy       User              @relation(fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  
+  @@index([itemId])
+  @@index([requestedByUserId])
+  @@index([status])
+  @@index([fraudRiskLevel])
+  @@index([requestedAt])
+  @@map("ai_analyses")
+}
+
+// Comments table (team collaboration on assets)
+model Comment {
+  id                String   @id @default(uuid())
+  itemId            String   @map("item_id")
+  userId            String   @map("user_id")
+  content           String   @db.Text
+  mentionedUserIds  String[] @map("mentioned_user_ids")  // Array of user IDs for @mentions
+  isEdited          Boolean  @default(false) @map("is_edited")
+  parentCommentId   String?  @map("parent_comment_id")   // For threaded replies
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  item              Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user              User       @relation("CommentAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  parentComment     Comment?   @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies           Comment[]  @relation("CommentReplies")
+  notifications     Notification[]
+  
+  @@index([itemId])
+  @@index([userId])
+  @@index([parentCommentId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+// Approvals table (multi-step approval workflows)
+model Approval {
+  id                String           @id @default(uuid())
+  itemId            String           @map("item_id")
+  requestedByUserId String           @map("requested_by_user_id")
+  approverUserId    String?          @map("approver_user_id")
+  
+  // Approval details
+  approvalType      String           @map("approval_type")  // e.g., "verification", "value_assessment", "authenticity_check"
+  status            ApprovalStatus   @default(pending)
+  priority          ApprovalPriority @default(medium)
+  
+  // Notes and requirements
+  requestNotes      String?          @map("request_notes") @db.Text
+  responseNotes     String?          @map("response_notes") @db.Text
+  requiredRole      TeamRole?        @map("required_role")  // Minimum role required to approve
+  
+  // Timestamps
+  requestedAt       DateTime         @default(now()) @map("requested_at")
+  respondedAt       DateTime?        @map("responded_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  dueDate           DateTime?        @map("due_date")
+  
+  // Relations
+  item              Item             @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  requestedBy       User             @relation("ApprovalRequester", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  approver          User?            @relation("ApprovalApprover", fields: [approverUserId], references: [id], onDelete: SetNull)
+  notifications     Notification[]
+  
+  @@index([itemId])
+  @@index([requestedByUserId])
+  @@index([approverUserId])
+  @@index([status])
+  @@index([priority])
+  @@index([requestedAt])
+  @@map("approvals")
+}
+
+// Notifications table (activity notifications for team members)
+model Notification {
+  id                String            @id @default(uuid())
+  userId            String            @map("user_id")
+  
+  // Notification details
+  type              NotificationType
+  title             String
+  message           String            @db.Text
+  actionUrl         String?           @map("action_url")
+  
+  // Related resources
+  relatedItemId     String?           @map("related_item_id")
+  relatedCommentId  String?           @map("related_comment_id")
+  relatedApprovalId String?           @map("related_approval_id")
+  relatedUserId     String?           @map("related_user_id")  // User who triggered the notification
+  
+  // Status
+  isRead            Boolean           @default(false) @map("is_read")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  
+  // Relations
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedItem       Item?             @relation(fields: [relatedItemId], references: [id], onDelete: Cascade)
+  relatedComment    Comment?          @relation(fields: [relatedCommentId], references: [id], onDelete: Cascade)
+  relatedApproval   Approval?         @relation(fields: [relatedApprovalId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([relatedItemId])
+  @@map("notifications")
+}
+
+// Saved searches table (for user-defined search filters)
+model SavedSearch {
+  id             String       @id @default(uuid())
+  name           String
+  description    String?
+  userId         String       @map("user_id")
+  organizationId String       @map("organization_id")
+  
+  // Search criteria stored as JSON
+  filters        Json
+  
+  // Settings
+  isDefault      Boolean      @default(false) @map("is_default")
+  isPinned       Boolean      @default(false) @map("is_pinned")      // Pin to top of sidebar
+  isShared       Boolean      @default(false) @map("is_shared")      // Shared with organization
+  icon           String?                                              // Icon name (e.g., "star", "bookmark", "heart")
+  color          String?                                              // Color code (e.g., "#d4af37")
+  
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([organizationId])
+  @@index([isDefault])
+  @@index([isPinned])
+  @@index([isShared])
+  @@map("saved_searches")
+}
+
+// Portfolio snapshots table (for historical tracking)
+model PortfolioSnapshot {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  
+  // Snapshot data
+  totalValue     Decimal  @map("total_value") @db.Decimal(12, 2)
+  totalItems     Int      @map("total_items")
+  verifiedItems  Int      @map("verified_items")
+  pendingItems   Int      @map("pending_items")
+  
+  // Value breakdown by category (JSON)
+  categoryBreakdown Json  @map("category_breakdown")
+  
+  // Value breakdown by status (JSON)
+  statusBreakdown   Json  @map("status_breakdown")
+  
+  // Metadata
+  snapshotDate   DateTime @map("snapshot_date")
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  @@index([organizationId])
+  @@index([snapshotDate])
+  @@map("portfolio_snapshots")
+}
+
+// Export history table (for tracking exports)
+model ExportHistory {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  userId         String         @map("user_id")
+  
+  // Export details
+  template       ExportTemplate
+  format         String         // "csv" or "pdf"
+  filters        Json?          // Filters applied to export
+  
+  // Export metadata
+  fileName       String         @map("file_name")
+  fileSize       Int?           @map("file_size")  // in bytes
+  itemCount      Int            @map("item_count")
+  
+  // Quick re-export support
+  canReExport    Boolean        @default(true) @map("can_re_export")
+  
+  createdAt      DateTime       @default(now()) @map("created_at")
+  
+  // Relations
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([organizationId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("export_history")
+}
+
+// Bulk import table (for dealer bulk uploads)
+model BulkImport {
+  id             String           @id @default(uuid())
+  organizationId String           @map("organization_id")
+  userId         String           @map("user_id")
+  
+  // Upload details
+  fileName       String           @map("file_name")
+  fileSize       Int?             @map("file_size")  // in bytes
+  
+  // Processing details
+  totalRows      Int              @map("total_rows")
+  successRows    Int              @default(0) @map("success_rows")
+  failedRows     Int              @default(0) @map("failed_rows")
+  status         BulkImportStatus @default(pending)
+  
+  // Configuration
+  columnMapping  Json?            @map("column_mapping")  // User-defined column mappings
+  categoryId     String?          @map("category_id")     // Optional category assignment for all items
+  errors         Json?                                    // Detailed error messages for failed rows
+  
+  // Timestamps
+  createdAt      DateTime         @default(now()) @map("created_at")
+  completedAt    DateTime?        @map("completed_at")
+  
+  // Relations
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category       ItemCategory?    @relation(fields: [categoryId], references: [id])
+  
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("bulk_imports")
+}
